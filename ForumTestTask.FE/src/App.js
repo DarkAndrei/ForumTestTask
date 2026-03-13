@@ -6,13 +6,9 @@ import {useCommentsData} from "./hooks/useCommentsData";
 
 export const App = () => {
     const [quoteText, setQuoteText] = useState("");
-    const [isCommentFormOn, setIsCommentFormOn] = useState(false);
-    const {comments, users} = useCommentsData();
     const [parentCommentId, setParentCommentId] = useState(0);
 
-    const handleClickAddCommentButton = () => {
-        setIsCommentFormOn(prev => !prev);
-    }
+    const {comments, users, updateData} = useCommentsData();
 
     const handleReplyClick = (commentId) => {
         setParentCommentId(commentId);
@@ -31,6 +27,7 @@ export const App = () => {
                         setParentId={setParentCommentId}
                         quoteText={quoteText}
                         setQuoteText={setQuoteText}
+                        refreshComments={updateData}
                     />
                 </div>
 
