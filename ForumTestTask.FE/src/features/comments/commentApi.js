@@ -58,7 +58,7 @@ export async function addReplyComment(parentId, newReplyComment, file) {
         method: "PUT",
         body: formData
     });
-    
+
     // handle backend error
     if (!response.ok) {
         const errorText = await response.text();
