@@ -8,7 +8,7 @@ export const App = () => {
     const [quoteText, setQuoteText] = useState("");
     const [parentCommentId, setParentCommentId] = useState(0);
 
-    const {comments, users, updateData} = useCommentsData();
+    const {comments, users, refreshComments} = useCommentsData();
 
     const handleReplyClick = (commentId) => {
         setParentCommentId(commentId);
@@ -27,7 +27,7 @@ export const App = () => {
                         setParentId={setParentCommentId}
                         quoteText={quoteText}
                         setQuoteText={setQuoteText}
-                        refreshComments={updateData}
+                        refreshComments={refreshComments}
                     />
                 </div>
 
