@@ -6,7 +6,7 @@ export const useCommentsData = () => {
     const [comments, setComments] = useState([]);
     const [users, setUsers] = useState({});
 
-    const refreshComments = useCallback(async () => {
+    const updateData = useCallback(async () => {
         const usersData = await getUsers();
         const commentsData = await getComments();
 
@@ -15,10 +15,8 @@ export const useCommentsData = () => {
     }, []);
 
     useEffect(() => {
-        refreshComments();
+        updateData();
     }, [])
 
-    return {comments, users, refreshComments}
+    return {comments, users, refreshComments: updateData}
 }
-
-export default useCommentsData;
