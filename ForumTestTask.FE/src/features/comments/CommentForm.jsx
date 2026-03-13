@@ -1,156 +1,213 @@
 import {useEffect, useRef, useState} from "react";
-import {addComment} from "./commentApi";
-import addUser from "../users/userApi";
-import BaseTagButtons from "../../components/BaseTagButtons";
-import DOMPurify from "dompurify";
+import {addComment, addReplyComment} from "./commentApi";
+import {addUser} from "../users/userApi";
+import {BaseTagButtons} from "../../components/BaseTagButtons";
+import {sanitizeText} from "../../services/CommentService";
 
-export const CommentForm = () => {
-    const [userName, setUserName] = useState('');
-    const [email, setEmail] = useState('');
-    const [text, setText] = useState('');
+export const CommentForm = ({
+                                parentId = 0,
+                                setParentId,
+                                quoteText = "",
+                                setQuoteText,
+                                updateData
+                            }) => {
+    const [userName, setUserName] = useState("");
+    const [email, setEmail] = useState("");
     const [file, setFile] = useState(null);
     const [message, setMessage] = useState("");
     const [error, setError] = useState(false);
-    const textareaRef = useRef(null);
-    const [preview, setPreview] = useState(null);
-
-    const ALLOWED_TAGS = ["a", "b", "i", "strong", "code"];
-    const ALLOWED_ATTR = ["href", "title"];
-    const COMMENT_SUCCESSES = "Comment added successfully!";
+    const editableRef = useRef(null);
+    const [preview, setPreview] = useState("");
+    const [contentBlocks, setContentBlocks] = useState([]);
 
     useEffect(() => {
-        setPreview(sanitizeUserInput(text));
-    }, [text]);
-
-    const handleSubmit = async (e) => {
-        e.preventDefault(); // this is need better understand
-        if (!userName.trim() || !email.trim() || !text.trim()) return;
-
-        console.log("before sanitize:", text);
-        const safeText = sanitizeUserInput(text);
-        console.log("after sanitizer^", safeText);
-
-        if (!validateXHTML(safeText)) {
-            setMessage("Does not complete tag HTML.");
-            setError(true);
-            return;
+        if (quoteText.trim()) {
+            addQuote(quoteText);
+            setQuoteText("");
         }
+    }, [quoteText]);
 
-        const user = {
-            username: userName,
-            email: email
+    useEffect(() => {
+        if (parentId !== 0) {
+            addReply(parentId);
         }
-        const userId = await addUser(user);
+    }, [parentId]);
 
-        const newComment = {
-            userId: userId,
-            text: safeText
-        };
-        const result = await addComment(newComment, file);
+    useEffect(() => {
+        buildPreview();
+    }, [contentBlocks]);
 
-        if (!result.success) {
-            setMessage(result.message);
-            setError(true);
-            return;
-        }
+    const addQuote = (quote) => {
+        const editable = editableRef.current;
 
-        setMessage(COMMENT_SUCCESSES);
+        const wrapper = document.createElement("div");
+        wrapper.className = "quote-wrapper";
+        wrapper.contentEditable = "false";
 
-        setUserName('');
-        setEmail('');
-        setText('');
-        setFile(null);
-        setError(false);
-        setPreview("");
-        e.target.reset();
+        const quoteDiv = document.createElement("div");
+        quoteDiv.className = "quote-block";
+        quoteDiv.innerHTML = sanitizeText(quote);
+
+        wrapper.appendChild(quoteDiv);
+
+        editable.appendChild(wrapper);
+
+        const br = document.createElement("br");
+        editable.appendChild(br);
+
+        const range = document.createRange();
+        range.setStartAfter(br);
+        range.collapse(true);
+
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        setContentBlocks((prev) => [...prev, {type: "quote", text: quote}]);
+    };
+
+    const addReply = () => {
+        setContentBlocks((prev) => {
+
+            const withoutReply = prev.filter(
+                (block) => block.type !== "reply"
+            );
+
+            return [
+                {type: "reply", parentId},
+                ...withoutReply
+            ];
+        });
     }
 
-    const sanitizeUserInput = (input) =>
-        DOMPurify.sanitize(input, {ALLOWED_TAGS: ALLOWED_TAGS, ALLOWED_ATTR: ALLOWED_ATTR});
+    const cancelReply = () => {
+        setParentId(0);
+    };
 
-    const validateXHTML = (safeText) => {
-        try {
-            const parser = new DOMParser();
-            const wrapped = `<root>${safeText}</root>`;
+    const handleInput = () => {
+        const editable = editableRef.current;
+        const nodes = Array.from(editable.childNodes);
 
-            const doc = parser.parseFromString(wrapped, "application/xml");
-            const parserError = doc.getElementsByTagName("parsererror");
-            return parserError.length === 0;
-        } catch (e) {
-            return false;
-        }
+        const newBlocks = nodes
+            .map((node) => {
+                sanitizeText(node.textContent);
+
+                if (node.nodeType === Node.ELEMENT_NODE && node.contentEditable === "false") {
+                    return {type: "quote", text: node.innerHTML};
+                }
+
+                return {type: "text", text: node.textContent || ""};
+            })
+            .filter(Boolean);
+
+        setContentBlocks(newBlocks);
     }
 
     const handleClickTagButton = (tag) => {
-        const textarea = textareaRef.current;
-        if (!textarea) return;
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+        const range = selection.getRangeAt(0);
+        const selectedText = range.toString();
+        const newNode = document.createTextNode(`[${tag}]${selectedText}[/${tag}]`);
+        range.deleteContents();
+        range.insertNode(newNode);
+        handleInput();
+    }
 
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
+    const handleSubmit = async (e) => {
+        e.preventDefault();
 
-        const before = text.substring(0, start);
-        const selected = text.substring(start, end);
-        const after = text.substring(end);
+        const textContent = contentBlocks
+            .map((block) => (block.type === "quote" ? `${block.text}` : block.text))
+            .join("<br>");
 
-        // Wrap selected text with tag, or just insert empty tag
-        const newText = `${before}<${tag}>${selected}</${tag}>${after}`;
+        if (!userName.trim() || !email.trim() || !textContent.trim()) return;
 
-        setText(newText);
+        const sanitizedText = sanitizeText(textContent);
+        const userId = await addUser({username: userName, email});
+        const newComment = {userId, text: sanitizedText};
 
-        // Move cursor inside the tag if nothing selected
-        const pos = selected ? end + tag.length * 2 + 5 : start + tag.length + 2;
-        setTimeout(() => {
-            textarea.focus();
-            textarea.setSelectionRange(pos, pos);
-        }, 0);
+        const result =
+            parentId === 0
+                ? await addComment(newComment, file)
+                : await addReplyComment(parentId, newComment, file);
+
+        if (result.success) {
+            setMessage("Comment added successfully!");
+
+            updateData();
+
+            setUserName("");
+            setEmail("");
+            setFile(null);
+            editableRef.current.innerHTML = "";
+            setContentBlocks([]);
+            setParentId(0);
+        } else {
+            setError(false);
+            setMessage(result.message);
+            setError(true);
+        }
+
+
+    };
+
+    const buildPreview = () => {
+        const textForPreview = contentBlocks
+            .map(block => block.type === "quote" ? block.text : block.text)
+            .join("<br>");
+        const sanitizedText = sanitizeText(textForPreview)
+        setPreview(sanitizedText);
     }
 
     return (
-        <form onSubmit={handleSubmit} style={{display: "flex", flexDirection: "column", gap: "8px", maxWidth: "400px"}}>
-            <input
-                type="text"
-                placeholder="Write your name..."
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}/>
-            <input
-                type="text"
-                placeholder="Write your email..."
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}/>
+        <form
+            onSubmit={handleSubmit}
+            style={{display: "flex", flexDirection: "column", gap: "8px", maxWidth: "400px"}}
+        >
+            <input type="text" placeholder="Write your name..." value={userName}
+                   onChange={(e) => setUserName(e.target.value)}/>
+            <input type="text" placeholder="Write your email..." value={email}
+                   onChange={(e) => setEmail(e.target.value)}/>
+
+            <BaseTagButtons handleClickTagButton={handleClickTagButton}/>
+
             <div>
-                <BaseTagButtons
-                    handleClickTagButton={handleClickTagButton}
-                />
-                <textarea
-                    ref={textareaRef}
-                    placeholder="Write a comment..."
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}/>
+                {parentId !== 0 &&
+                    <div className="reply-box">
+                        Reply to user with ID: {parentId}
+                        <button className="reply-close" onClick={cancelReply}>×</button>
+                    </div>
+                }
+
+                <div
+                    ref={editableRef}
+                    contentEditable
+                    onInput={handleInput}
+                    style={{
+                        minHeight: "100px",
+                        border: "1px solid #ccc",
+                        padding: "8px",
+                        textAlign: "left",
+                    }}
+                >
+
+                </div>
             </div>
 
-            <input
-                type="file"
-                onChange={(e) => setFile(e.target.files[0])}/>
+            <input type="file" onChange={(e) => setFile(e.target.files[0])}/>
+            <button type="submit">Submit</button>
 
-            {/*<ReCAPTCHA*/}
-            {/*    sitekey={SITE_KEY}*/}
-            {/*    onChange={(token) => setCaptchaToken(token)}*/}
-            {/*/>*/}
-
-            <button type="submit">Add Comment</button>
-
-            <div
-                style={{border: "1px solid #ccc", padding: "8px", marginTop: "8px"}}
-                dangerouslySetInnerHTML={{__html: preview}}
-            />
-
-            {message && (
-                <p style={{color: error ? "red" : "green"}}>
-                    {message}
-                </p>
+            {preview && (
+                <div
+                    className="preview-box"
+                    dangerouslySetInnerHTML={{__html: preview}}
+                />
             )}
+
+            {message && <p style={{color: error ? "red" : "green"}}>{message}</p>}
         </form>
-    )
-}
+    );
+};
 
 export default CommentForm;
