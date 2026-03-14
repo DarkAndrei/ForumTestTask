@@ -12,7 +12,7 @@ public class FileService
         return Guid.NewGuid().ToString() + extension;
     }
 
-    public async Task<string> ResizeAndSaveImage(IFormFile file)
+    public async Task<Image> ResizeImage(IFormFile file)
     {
         var genImageName = generateUniqueFileName(file.FileName);
         var imagePath = Path.Combine(_uploadFolder, genImageName);
@@ -31,22 +31,20 @@ public class FileService
             }));
         }
 
-        await image.SaveAsync(imagePath);
-
-        return "/uploads/comments/" + genImageName;
+        return image;
     }
 
-    public string SaveTxtFile(IFormFile file)
+    public async Task<string> SaveFile(IFormFile file)
     {
         var genFileName = generateUniqueFileName(file.FileName);
         var filePath = Path.Combine(_uploadFolder, genFileName);
 
-        using (var stream = new FileStream(filePath, FileMode.Create))
-        {
-            file.CopyTo(stream);
-        }
+        using var stream = new FileStream(filePath, FileMode.Create);
+        await file.CopyToAsync(stream);
 
         return "/uploads/comments/" + genFileName;
     }
+
+
 
 }
