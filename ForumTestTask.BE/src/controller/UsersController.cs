@@ -15,27 +15,68 @@ public class UsersController : ControllerBase
     [HttpPost]
     public IActionResult CreateUser(UserDto userDto)
     {
-        var existingUser = _context.Users.Include(u => u.Comments).FirstOrDefault(u => u.UserName == userDto.UserName && u.Email == userDto.Email);
+        var existingUser = _context.Users.FirstOrDefault(u => u.UserName == userDto.UserName && u.Email == userDto.Email);
 
         if (existingUser != null)
         {
-            return BadRequest("User with this name already exists.");
+            return Ok(existingUser.Id);
         }
-        var user = new User
+
+        var newUser = new User
         {
             UserName = userDto.UserName,
-            Email = userDto.Email
+            Email = userDto.Email,
+            HomePage = userDto.HomePage
         };
 
-        _context.Users.Add(user);
+        _context.Users.Add(newUser);
         _context.SaveChanges();
-        return Ok(user);
+        return Ok(newUser.Id);
+    }
+
+    // Accepts a list of users from JSON
+    [HttpPost("bulk")]
+    public IActionResult CreateUsers([FromBody] List<UserDto> usersDto)
+    {
+        if (usersDto == null || !usersDto.Any())
+            return BadRequest("No users provided.");
+
+        var result = new List<object>();
+
+        foreach (var userDto in usersDto)
+        {
+            // Check if user already exists
+            var existingUser = _context.Users
+                .FirstOrDefault(u => u.UserName == userDto.UserName && u.Email == userDto.Email);
+
+            if (existingUser != null)
+            {
+                // Add existing user's Id
+                result.Add(new { UserName = userDto.UserName, Email = userDto.Email, Id = existingUser.Id });
+                continue;
+            }
+
+            // Create new user
+            var newUser = new User
+            {
+                UserName = userDto.UserName,
+                Email = userDto.Email,
+                HomePage = userDto.HomePage
+            };
+
+            _context.Users.Add(newUser);
+            _context.SaveChanges();
+
+            result.Add(new { UserName = userDto.UserName, Email = userDto.Email, Id = newUser.Id });
+        }
+
+        return Ok(result);
     }
 
     [HttpGet]
     public IActionResult GetUsers()
     {
-        var users = _context.Users.Include(u => u.Comments).ToList();
+        var users = _context.Users.ToList();
         return Ok(users);
     }
 
