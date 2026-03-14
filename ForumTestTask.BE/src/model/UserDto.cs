@@ -1,5 +1,6 @@
 public class UserDto
 {
-    public string UserName { get; set; } = null!;
-    public string Email { get; set; } = null!;
+    public required string UserName { get; set; }
+    public required string Email { get; set; }
+    public string? HomePage { get; set; }
 }
