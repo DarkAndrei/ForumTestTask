@@ -18,5 +18,5 @@ export const useCommentsData = () => {
         updateData();
     }, [])
 
-    return {comments, users, refreshComments: updateData}
+    return {comments, users, updateData}
 }

@@ -3,6 +3,7 @@ import {addComment, addReplyComment} from "./commentApi";
 import {addUser} from "../users/userApi";
 import {BaseTagButtons} from "../../components/BaseTagButtons";
 import {sanitizeText} from "../../services/CommentService";
+import {CommentDto} from "./models/CommentDto";
 
 export const CommentForm = ({
                                 parentId = 0,
@@ -13,6 +14,7 @@ export const CommentForm = ({
                             }) => {
     const [userName, setUserName] = useState("");
     const [email, setEmail] = useState("");
+    const [homePage, setHomePage] = useState("");
     const [file, setFile] = useState(null);
     const [message, setMessage] = useState("");
     const [error, setError] = useState(false);
@@ -100,6 +102,7 @@ export const CommentForm = ({
             })
             .filter(Boolean);
 
+
         setContentBlocks(newBlocks);
     }
 
@@ -124,13 +127,17 @@ export const CommentForm = ({
         if (!userName.trim() || !email.trim() || !textContent.trim()) return;
 
         const sanitizedText = sanitizeText(textContent);
-        const userId = await addUser({username: userName, email});
-        const newComment = {userId, text: sanitizedText};
+        const userId = await addUser({userName, email, homePage});
+
+        const newCommentDto = new CommentDto({
+            userId: userId,
+            text: sanitizedText,
+        })
 
         const result =
             parentId === 0
-                ? await addComment(newComment, file)
-                : await addReplyComment(parentId, newComment, file);
+                ? await addComment(newCommentDto, file)
+                : await addReplyComment(parentId, newCommentDto, file);
 
         if (result.success) {
             setMessage("Comment added successfully!");
@@ -139,6 +146,7 @@ export const CommentForm = ({
 
             setUserName("");
             setEmail("");
+            setHomePage("");
             setFile(null);
             editableRef.current.innerHTML = "";
             setContentBlocks([]);
@@ -161,14 +169,27 @@ export const CommentForm = ({
     }
 
     return (
-        <form
-            onSubmit={handleSubmit}
-            style={{display: "flex", flexDirection: "column", gap: "8px", maxWidth: "400px"}}
-        >
-            <input type="text" placeholder="Write your name..." value={userName}
-                   onChange={(e) => setUserName(e.target.value)}/>
-            <input type="text" placeholder="Write your email..." value={email}
-                   onChange={(e) => setEmail(e.target.value)}/>
+        <form onSubmit={handleSubmit} className="comment-form">
+            <input
+                type="text"
+                placeholder="Write your name..."
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+            />
+
+            <input
+                type="text"
+                placeholder="Write your email..."
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+            />
+
+            <input
+                type="text"
+                placeholder="Write your home page..."
+                value={homePage}
+                onChange={(e) => setHomePage(e.target.value)}
+            />
 
             <BaseTagButtons handleClickTagButton={handleClickTagButton}/>
 
@@ -184,18 +205,12 @@ export const CommentForm = ({
                     ref={editableRef}
                     contentEditable
                     onInput={handleInput}
-                    style={{
-                        minHeight: "100px",
-                        border: "1px solid #ccc",
-                        padding: "8px",
-                        textAlign: "left",
-                    }}
-                >
-
-                </div>
+                    className="comment-editor"
+                ></div>
             </div>
 
             <input type="file" onChange={(e) => setFile(e.target.files[0])}/>
+
             <button type="submit">Submit</button>
 
             {preview && (
@@ -205,7 +220,11 @@ export const CommentForm = ({
                 />
             )}
 
-            {message && <p style={{color: error ? "red" : "green"}}>{message}</p>}
+            {message && (
+                <p className={error ? "message-error" : "message-success"}>
+                    {message}
+                </p>
+            )}
         </form>
     );
 };
