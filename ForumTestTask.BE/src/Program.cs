@@ -20,6 +20,8 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod());
 });
 
+builder.Services.AddScoped<FileService>();
+
 var app = builder.Build();
 
 // Ensure the database is deleted and created on startup for development purposes
