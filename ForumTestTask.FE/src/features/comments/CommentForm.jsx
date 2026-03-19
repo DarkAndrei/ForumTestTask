@@ -1,17 +1,17 @@
-import {useEffect, useRef, useState} from "react";
-import {addComment, addReplyComment} from "./commentApi";
-import {addUser} from "../users/userApi";
-import {BaseTagButtons} from "../../components/BaseTagButtons";
-import {sanitizeText} from "../../services/CommentService";
-import {CommentDto} from "./models/CommentDto";
+import { useEffect, useRef, useState } from "react";
+import { addComment, addReplyComment } from "./commentApi";
+import { addUser } from "../users/userApi";
+import { HtmlTagButtons } from "../../components/HtmlTagButtons";
+import { convertToHtml, sanitizeText } from "../../services/CommentService";
+import { CommentDto } from "./models/CommentDto";
 
 export const CommentForm = ({
-                                parentId = 0,
-                                setParentId,
-                                quoteText = "",
-                                setQuoteText,
-                                updateData
-                            }) => {
+    parentId = 0,
+    setParentId,
+    quoteText = "",
+    setQuoteText,
+    updateData
+}) => {
     const [userName, setUserName] = useState("");
     const [email, setEmail] = useState("");
     const [homePage, setHomePage] = useState("");
@@ -48,7 +48,7 @@ export const CommentForm = ({
 
         const quoteDiv = document.createElement("div");
         quoteDiv.className = "quote-block";
-        quoteDiv.innerHTML = sanitizeText(quote);
+        // quoteDiv.innerHTML = sanitizeText(quote);
 
         wrapper.appendChild(quoteDiv);
 
@@ -65,7 +65,7 @@ export const CommentForm = ({
         sel.removeAllRanges();
         sel.addRange(range);
 
-        setContentBlocks((prev) => [...prev, {type: "quote", text: quote}]);
+        setContentBlocks((prev) => [...prev, { type: "quote", text: quote }]);
     };
 
     const addReply = () => {
@@ -76,7 +76,7 @@ export const CommentForm = ({
             );
 
             return [
-                {type: "reply", parentId},
+                { type: "reply", parentId },
                 ...withoutReply
             ];
         });
@@ -92,13 +92,13 @@ export const CommentForm = ({
 
         const newBlocks = nodes
             .map((node) => {
-                sanitizeText(node.textContent);
+                // sanitizeText(node.textContent);
 
                 if (node.nodeType === Node.ELEMENT_NODE && node.contentEditable === "false") {
-                    return {type: "quote", text: node.innerHTML};
+                    return { type: "quote", text: node.innerHTML };
                 }
 
-                return {type: "text", text: node.textContent || ""};
+                return { type: "text", text: node.textContent || "" };
             })
             .filter(Boolean);
 
@@ -120,14 +120,16 @@ export const CommentForm = ({
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const textContent = contentBlocks
-            .map((block) => (block.type === "quote" ? `${block.text}` : block.text))
-            .join("<br>");
+        const textContent = editableRef.current.innerHTML;
+
+        // const textContent = contentBlocks
+        //     .map((block) => (block.type === "quote" ? `${block.text}` : block.text))
+        //     .join("<br>");
 
         if (!userName.trim() || !email.trim() || !textContent.trim()) return;
 
         const sanitizedText = sanitizeText(textContent);
-        const userId = await addUser({userName, email, homePage});
+        const userId = await addUser({ userName, email, homePage });
 
         const newCommentDto = new CommentDto({
             userId: userId,
@@ -160,13 +162,21 @@ export const CommentForm = ({
 
     };
 
+    // const buildPreview = () => {
+    //     const textForPreview = contentBlocks
+    //         .map(block => block.type === "quote" ? block.text : block.text)
+    //         .join("<br>");
+    //     const sanitizedText = convertToHtml(sanitizeText(textForPreview));
+    //     setPreview(sanitizedText);
+    // }
     const buildPreview = () => {
-        const textForPreview = contentBlocks
-            .map(block => block.type === "quote" ? block.text : block.text)
-            .join("<br>");
-        const sanitizedText = sanitizeText(textForPreview)
+        if (!editableRef.current) return;
+
+        const text = editableRef.current.innerHTML;
+        const sanitizedText = convertToHtml(sanitizeText(text));
+
         setPreview(sanitizedText);
-    }
+    };
 
     return (
         <form onSubmit={handleSubmit} className="comment-form">
@@ -191,32 +201,38 @@ export const CommentForm = ({
                 onChange={(e) => setHomePage(e.target.value)}
             />
 
-            <BaseTagButtons handleClickTagButton={handleClickTagButton}/>
+            <HtmlTagButtons handleClickTagButton={handleClickTagButton} />
 
             <div>
                 {parentId !== 0 &&
                     <div className="reply-box">
                         Reply to user with ID: {parentId}
-                        <button className="reply-close" onClick={cancelReply}>×</button>
+                        <button
+                            type="button"
+                            className="reply-close"
+                            onClick={cancelReply}
+                        >
+                            ×
+                        </button>
                     </div>
                 }
 
                 <div
                     ref={editableRef}
                     contentEditable
-                    onInput={handleInput}
                     className="comment-editor"
+                    onInput={buildPreview}
                 ></div>
-            </div>
 
-            <input type="file" onChange={(e) => setFile(e.target.files[0])}/>
+            </div>
+            <input type="file" onChange={(e) => setFile(e.target.files[0])} />
 
             <button type="submit">Submit</button>
 
             {preview && (
                 <div
                     className="preview-box"
-                    dangerouslySetInnerHTML={{__html: preview}}
+                    dangerouslySetInnerHTML={{ __html: preview }}
                 />
             )}
 
