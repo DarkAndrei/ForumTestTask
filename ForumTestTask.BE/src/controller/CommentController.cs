@@ -6,12 +6,14 @@ using Microsoft.EntityFrameworkCore;
 public class CommentsController : ControllerBase
 {
     private readonly AppDbContext _context;
-    private readonly FileService _fileService = new();
+    private readonly FileService _fileService;
+    private readonly HtmlSanitizerService _htmlSanitizerService;
 
-    public CommentsController(AppDbContext context, FileService fileService)
+    public CommentsController(AppDbContext context, FileService fileService, HtmlSanitizerService htmlSanitizerService)
     {
         _context = context;
         _fileService = fileService;
+        _htmlSanitizerService = htmlSanitizerService;
     }
 
     [HttpGet]
@@ -21,6 +23,7 @@ public class CommentsController : ControllerBase
         return Ok(comments);
     }
 
+    [RequestSizeLimit(100_000_000)]
     [HttpPost]
     public async Task<IActionResult> AddComment(
         [FromForm] CommentDto commentDto,
@@ -28,6 +31,8 @@ public class CommentsController : ControllerBase
         )
     {
         string? filePath = null;
+
+        Console.WriteLine($"Received comment: UserId={commentDto.UserId}, Text={commentDto.Text}, File={file?.FileName}");
 
         var userExists = await _context.Users.AnyAsync(u => u.Id == commentDto.UserId);
 
@@ -41,6 +46,8 @@ public class CommentsController : ControllerBase
             if (filePath == null)
                 return BadRequest("Invalid file.");
         }
+
+        commentDto.Text = _htmlSanitizerService.Sanitize(commentDto.Text);
 
         var comment = new Comment
         {
@@ -56,6 +63,7 @@ public class CommentsController : ControllerBase
         return Ok(new { Message = "Comment saved successfully" });
     }
 
+    [RequestSizeLimit(100_000_000)]
     [HttpPut("reply")]
     public async Task<IActionResult> AddReplyComment(
         [FromForm] int parentId,
@@ -78,6 +86,8 @@ public class CommentsController : ControllerBase
                 return BadRequest("Invalid file.");
         }
 
+        commentDto.Text = _htmlSanitizerService.Sanitize(commentDto.Text);
+
         var replyComment = new Comment
         {
             UserId = commentDto.UserId,
@@ -99,6 +109,7 @@ public class CommentsController : ControllerBase
 
 
     // temporary method for bulk comments creation without file upload
+    [RequestSizeLimit(100_000_000)]
     [HttpPost("bulk")]
     public async Task<IActionResult> AddComments([FromBody] List<CommentDto> commentsDto)
     {
@@ -118,6 +129,8 @@ public class CommentsController : ControllerBase
             }
 
             string? filePath = null;
+
+            commentDto.Text = _htmlSanitizerService.Sanitize(commentDto.Text);
 
             var comment = new Comment
             {
