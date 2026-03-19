@@ -11,8 +11,8 @@ public class FileService
     private readonly string[] _allowedImageExtensions = { ".jpg", ".png", ".gif" };
     private readonly string[] _allowedTextExtensions = { ".txt" };
 
-    private readonly string _uploadFolder = "wwwroot/uploads/comments";
-    private readonly string _fileFolder = "/uploads/comments";
+    private readonly string _uploadFolder = "wwwroot/uploads/comments/";
+    private readonly string _fileFolder = "/uploads/comments/";
 
     public async Task<string?> SaveAsync(IFormFile file)
     {
