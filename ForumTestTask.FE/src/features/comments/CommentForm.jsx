@@ -1,179 +1,180 @@
-import { useEffect, useRef, useState } from "react";
-import { addComment, addReplyComment } from "./commentApi";
-import { addUser } from "../users/userApi";
-import { HtmlTagButtons } from "../../components/HtmlTagButtons";
-import { convertToHtml, sanitizeText } from "../../services/CommentService";
-import { CommentDto } from "./models/CommentDto";
+import {useEffect, useRef, useState} from "react";
+import {addComment, addReplyComment} from "./commentApi";
+import {addUser} from "../users/userApi";
+import {HtmlTagButtons} from "../../components/HtmlTagButtons";
+import {convertToHtml, replaceBrToN, sanitizeText} from "../../services/CommentService";
+import {CommentDto} from "./models/CommentDto";
+import {parseApiErrors} from "../parseApiErrors";
 
 export const CommentForm = ({
-    parentId = 0,
-    setParentId,
-    quoteText = "",
-    setQuoteText,
-    updateData
-}) => {
+                                parentId = 0,
+                                setParentId,
+                                quoteText = "",
+                                setQuoteText,
+                                updateData
+                            }) => {
     const [userName, setUserName] = useState("");
     const [email, setEmail] = useState("");
     const [homePage, setHomePage] = useState("");
     const [file, setFile] = useState(null);
     const [message, setMessage] = useState("");
-    const [error, setError] = useState(false);
     const editableRef = useRef(null);
     const [preview, setPreview] = useState("");
-    const [contentBlocks, setContentBlocks] = useState([]);
+    const [errors, setErrors] = useState([]);
 
     useEffect(() => {
         if (quoteText.trim()) {
             addQuote(quoteText);
             setQuoteText("");
         }
-    }, [quoteText]);
+    }, [quoteText, setQuoteText]);
 
     useEffect(() => {
-        if (parentId !== 0) {
-            addReply(parentId);
-        }
-    }, [parentId]);
+        setErrors([]);
+    }, [editableRef]);
 
-    useEffect(() => {
-        buildPreview();
-    }, [contentBlocks]);
-
-    const addQuote = (quote) => {
+    const addQuote = (quoteText) => {
         const editable = editableRef.current;
 
-        const wrapper = document.createElement("div");
-        wrapper.className = "quote-wrapper";
-        wrapper.contentEditable = "false";
+        const sanitizedQuote = sanitizeText(quoteText);
 
-        const quoteDiv = document.createElement("div");
-        quoteDiv.className = "quote-block";
-        // quoteDiv.innerHTML = sanitizeText(quote);
 
-        wrapper.appendChild(quoteDiv);
+        if (editable.childNodes.length > 0 || editable.lastChild !== "br") {
+            editable.appendChild(document.createElement("br"));
+        }
 
-        editable.appendChild(wrapper);
+        const quoteSpan = document.createElement("span");
 
-        const br = document.createElement("br");
-        editable.appendChild(br);
+        quoteSpan.className = "quote-block";
+        quoteSpan.contentEditable = "false";
+        quoteSpan.innerHTML = sanitizedQuote;
+
+        editable.appendChild(quoteSpan);
+
+        editable.appendChild(document.createElement("br"));
+        editable.appendChild(document.createElement("br"));
+
 
         const range = document.createRange();
-        range.setStartAfter(br);
+        range.setStartAfter(editable.lastChild);
         range.collapse(true);
-
         const sel = window.getSelection();
         sel.removeAllRanges();
         sel.addRange(range);
-
-        setContentBlocks((prev) => [...prev, { type: "quote", text: quote }]);
     };
-
-    const addReply = () => {
-        setContentBlocks((prev) => {
-
-            const withoutReply = prev.filter(
-                (block) => block.type !== "reply"
-            );
-
-            return [
-                { type: "reply", parentId },
-                ...withoutReply
-            ];
-        });
-    }
 
     const cancelReply = () => {
         setParentId(0);
     };
 
-    const handleInput = () => {
-        const editable = editableRef.current;
-        const nodes = Array.from(editable.childNodes);
-
-        const newBlocks = nodes
-            .map((node) => {
-                // sanitizeText(node.textContent);
-
-                if (node.nodeType === Node.ELEMENT_NODE && node.contentEditable === "false") {
-                    return { type: "quote", text: node.innerHTML };
-                }
-
-                return { type: "text", text: node.textContent || "" };
-            })
-            .filter(Boolean);
-
-
-        setContentBlocks(newBlocks);
-    }
-
     const handleClickTagButton = (tag) => {
         const selection = window.getSelection();
         if (!selection.rangeCount) return;
+
         const range = selection.getRangeAt(0);
         const selectedText = range.toString();
-        const newNode = document.createTextNode(`[${tag}]${selectedText}[/${tag}]`);
+
+        const span = document.createElement("span");
+        span.textContent = `[${tag}]${selectedText}[/${tag}]`;
+
         range.deleteContents();
-        range.insertNode(newNode);
-        handleInput();
-    }
+        range.insertNode(span);
+
+        buildPreview();
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         const textContent = editableRef.current.innerHTML;
 
-        // const textContent = contentBlocks
-        //     .map((block) => (block.type === "quote" ? `${block.text}` : block.text))
-        //     .join("<br>");
+        console.log("textContent", textContent);
 
-        if (!userName.trim() || !email.trim() || !textContent.trim()) return;
+        const errors = validateForm({userName, email, homePage, textContent});
 
-        const sanitizedText = sanitizeText(textContent);
-        const userId = await addUser({ userName, email, homePage });
+        setErrors(errors);
 
-        const newCommentDto = new CommentDto({
-            userId: userId,
-            text: sanitizedText,
-        })
+        if (errors.length === 0) {
+            const normalizedText = replaceBrToN(textContent);
+            const sanitizedText = sanitizeText(normalizedText);
 
-        const result =
-            parentId === 0
-                ? await addComment(newCommentDto, file)
-                : await addReplyComment(parentId, newCommentDto, file);
+            try {
+                const userResult = await addUser({userName, email, homePage});
+                const userId = userResult.data.id;
+                const newCommentDto = new CommentDto({
+                    userId: userId,
+                    text: sanitizedText,
+                })
 
-        if (result.success) {
-            setMessage("Comment added successfully!");
+                const commentResult =
+                    parentId === 0
+                        ? await addComment(newCommentDto, file)
+                        : await addReplyComment(parentId, newCommentDto, file);
 
-            updateData();
+                if (commentResult.success) {
+                    setMessage("Comment added successfully!");
 
-            setUserName("");
-            setEmail("");
-            setHomePage("");
-            setFile(null);
-            editableRef.current.innerHTML = "";
-            setContentBlocks([]);
-            setParentId(0);
-        } else {
-            setError(false);
-            setMessage(result.message);
-            setError(true);
+                    updateData();
+
+                    setUserName("");
+                    setEmail("");
+                    setHomePage("");
+                    setFile(null);
+                    editableRef.current.innerHTML = "";
+                    setParentId(0);
+                    setPreview("");
+                    setErrors([])
+                }
+            } catch (error) {
+                const errorList = parseApiErrors(error);
+                setErrors(errorList);
+            }
+        }
+    }
+
+    const validateForm = ({userName, email, homePage, textContent}) => {
+        const errors = [];
+
+        if (!userName.trim()) {
+            errors.push("Enter your name");
+        } else if (userName.length < 3 || userName.length > 50) {
+            errors.push("UserName must be between 3 and 50 characters");
         }
 
+        if (!email.trim()) {
+            errors.push("Enter your email");
+        } else {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                errors.push("Email is not a valid e-mail address");
+            }
+        }
 
+        if (homePage?.trim()) {
+            try {
+                const url = new URL(homePage);
+                if (!["http:", "https:", "ftp:"].includes(url.protocol)) {
+                    errors.push("HomePage must be a valid http, https, or ftp URL");
+                }
+            } catch {
+                errors.push("HomePage must be a valid http, https, or ftp URL");
+            }
+        }
+
+        if (!textContent?.trim()) {
+            errors.push("Text is required");
+        }
+
+        return errors;
     };
 
-    // const buildPreview = () => {
-    //     const textForPreview = contentBlocks
-    //         .map(block => block.type === "quote" ? block.text : block.text)
-    //         .join("<br>");
-    //     const sanitizedText = convertToHtml(sanitizeText(textForPreview));
-    //     setPreview(sanitizedText);
-    // }
+
     const buildPreview = () => {
         if (!editableRef.current) return;
 
-        const text = editableRef.current.innerHTML;
-        const sanitizedText = convertToHtml(sanitizeText(text));
+        const htmlText = editableRef.current.innerHTML;
+        const normalizedText = replaceBrToN(htmlText);
+        const sanitizedText = convertToHtml(sanitizeText(normalizedText));
 
         setPreview(sanitizedText);
     };
@@ -201,7 +202,7 @@ export const CommentForm = ({
                 onChange={(e) => setHomePage(e.target.value)}
             />
 
-            <HtmlTagButtons handleClickTagButton={handleClickTagButton} />
+            <HtmlTagButtons handleClickTagButton={handleClickTagButton}/>
 
             <div>
                 {parentId !== 0 &&
@@ -224,20 +225,30 @@ export const CommentForm = ({
                     onInput={buildPreview}
                 ></div>
 
+
             </div>
-            <input type="file" onChange={(e) => setFile(e.target.files[0])} />
+            <input type="file" onChange={(e) => setFile(e.target.files[0])}/>
 
             <button type="submit">Submit</button>
 
             {preview && (
                 <div
                     className="preview-box"
-                    dangerouslySetInnerHTML={{ __html: preview }}
+                    style={{whiteSpace: "pre-line"}}
+                    dangerouslySetInnerHTML={{__html: preview}}
                 />
             )}
 
+            {errors.length > 0 && (
+                <ul className="message-error">
+                    {errors.map((err, i) => (
+                        <li key={i}>{err}</li>
+                    ))}
+                </ul>
+            )}
+
             {message && (
-                <p className={error ? "message-error" : "message-success"}>
+                <p className={errors.length > 0 ? "message-error" : "message-success"}>
                     {message}
                 </p>
             )}

@@ -1,4 +1,4 @@
-import {API_BASE_URL, COMMENTS_ENDPOINT, REPLY_ENDPOINT} from "../../config.js"
+import {BACKEND_API_URL, COMMENTS_ENDPOINT, REPLY_ENDPOINT} from "../../apiConfig.js"
 
 
 export async function addComment(newComment, file) {
@@ -11,7 +11,7 @@ export async function addComment(newComment, file) {
         formData.append("file", file);
     }
 
-    const response = await fetch(API_BASE_URL + COMMENTS_ENDPOINT, {
+    const response = await fetch(BACKEND_API_URL + COMMENTS_ENDPOINT, {
         method: "POST",
         body: formData
     });
@@ -28,7 +28,7 @@ export async function addComment(newComment, file) {
 
 export async function getComments() {
     try {
-        const response = await fetch(API_BASE_URL + COMMENTS_ENDPOINT, {
+        const response = await fetch(BACKEND_API_URL + COMMENTS_ENDPOINT, {
             method: "GET",
             headers: {"Content-Type": "application/json"},
         });
@@ -54,7 +54,7 @@ export async function addReplyComment(parentId, newReplyComment, file) {
         formData.append("file", file);
     }
 
-    const response = await fetch(API_BASE_URL + REPLY_ENDPOINT, {
+    const response = await fetch(BACKEND_API_URL + REPLY_ENDPOINT, {
         method: "PUT",
         body: formData
     });
