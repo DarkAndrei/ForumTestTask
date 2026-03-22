@@ -1,5 +1,5 @@
 import DOMPurify from "dompurify";
-import {EXTRA_HTML_TAGS, HTML_ATTR, HTML_TAGS} from "../Constants";
+import {EXTRA_HTML_ATTR, EXTRA_HTML_TAGS, HTML_ATTR, HTML_TAGS} from "../Constants";
 
 export const buildCommentTrees = (allComments) => {
     const itemsById = new Map();
@@ -78,26 +78,42 @@ export const reverseMap = (mapComments) => {
     return new Map(
         [...mapComments.entries()].reverse());
 }
- 
+
 export const convertToHtml = (input) => {
     if (!input) return "";
     return input
-        .replace(/\[b\](.*?)\[\/b\]/gi, "<b>$1</b>")
-        .replace(/\[i\](.*?)\[\/i\]/gi, "<i>$1</i>")
-        .replace(/\[strong\](.*?)\[\/strong\]/gi, "<strong>$1</strong>")
-        .replace(/\[code\](.*?)\[\/code\]/gi, "<code>$1</code>")
+        .replace(/\[b](.*?)\[\/b]/gi, "<b>$1</b>")
+        .replace(/\[i](.*?)\[\/i]/gi, "<i>$1</i>")
+        .replace(/\[strong](.*?)\[\/strong]/gi, "<strong>$1</strong>")
+        .replace(/\[code](.*?)\[\/code]/gi, "<code>$1</code>")
         .replace(/^> (.*)$/gm, "<blockquote>$1</blockquote>")
-        .replace(/\[a\](.*?)\|(.*?)\[\/a\]/gi, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-        .replace(/\[a\](.*?)\[\/a\]/gi, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>')
-        .replace(/\r?\n/g, "<br>");
+        .replace(/\[a](.*?)\|(.*?)\[\/a]/gi, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+        .replace(/\[a](.*?)\[\/a]/gi, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
 };
 
 export const sanitizeText = (input) => {
     return DOMPurify.sanitize(input, {
         ALLOWED_TAGS: [
-            EXTRA_HTML_TAGS.BR,
-            HTML_TAGS.CODE, HTML_TAGS.ANCHOR, HTML_TAGS.ITALIC, HTML_TAGS.STRONG
+            HTML_TAGS.CODE,
+            HTML_TAGS.ANCHOR,
+            HTML_TAGS.ITALIC,
+            HTML_TAGS.STRONG
+            ,
+            EXTRA_HTML_TAGS.SPAN
         ],
-        ALLOWED_ATTR: [HTML_ATTR.HREF, HTML_ATTR.TITLE],
+        ALLOWED_ATTR: [
+            HTML_ATTR.HREF,
+            HTML_ATTR.TITLE
+            ,
+            EXTRA_HTML_ATTR.CLASS,
+        ],
     });
+}
+
+export const replaceBrToN = (input) => {
+    return input.replace(/<div><br><\/div>/gi, '\n')
+        .replace(/<div>/gi, '\n')
+        .replace(/<\/div>/gi, '')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/^\s*\n+/, "");
 }
