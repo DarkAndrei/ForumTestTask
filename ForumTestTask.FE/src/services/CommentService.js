@@ -1,5 +1,6 @@
 import DOMPurify from "dompurify";
-import {EXTRA_HTML_ATTR, EXTRA_HTML_TAGS, HTML_ATTR, HTML_TAGS} from "../Constants";
+import {EXTRA_HTML_ATTR, HTML_ATTR, HTML_TAGS} from "../Constants";
+import {getCommentById} from "../features/comments/commentApi";
 
 export const buildCommentTrees = (allComments) => {
     const itemsById = new Map();
@@ -87,13 +88,11 @@ export const convertToHtml = (input) => {
             .map(item => item.type === "text" ? item.value : "")
             .join("\n");
     }
-
     return input
         .replace(/\[b](.*?)\[\/b]/gi, "<b>$1</b>")
         .replace(/\[i](.*?)\[\/i]/gi, "<i>$1</i>")
         .replace(/\[strong](.*?)\[\/strong]/gi, "<strong>$1</strong>")
         .replace(/\[code](.*?)\[\/code]/gi, "<code>$1</code>")
-        .replace(/^> (.*)$/gm, "<blockquote>$1</blockquote>")
         .replace(/\[a](.*?)\|(.*?)\[\/a]/gi, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
         .replace(/\[a](.*?)\[\/a]/gi, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
 };
@@ -105,8 +104,6 @@ export const sanitizeText = (input) => {
             HTML_TAGS.ANCHOR,
             HTML_TAGS.ITALIC,
             HTML_TAGS.STRONG
-            ,
-            EXTRA_HTML_TAGS.SPAN
         ],
         ALLOWED_ATTR: [
             HTML_ATTR.HREF,
@@ -143,41 +140,87 @@ export const parseEditorContent = (html) => {
 
     const result = [];
 
-    container.childNodes.forEach(node => {
-        // TEXT NODE
-        if (node.nodeType === Node.TEXT_NODE) {
-            const text = node.textContent.replace(/\u00a0/g, " ").trim();
-            if (text) {
-                result.push({type: "text", value: text});
-            }
-        }
-
-        // BR → treat as newline
-        if (node.nodeName === "BR") {
-            result.push({type: "text", value: "\n"});
-        }
-
-        // QUOTE NODE
+    const content = (node) => {
         if (
             node.nodeType === Node.ELEMENT_NODE &&
             node.hasAttribute("data-quote-id")
         ) {
             const id = Number(node.getAttribute("data-quote-id"));
             result.push({type: "quote", id});
+            return; // important: don't go inside quote
         }
 
-        // OTHER ELEMENTS (optional: keep formatting)
-        if (
-            node.nodeType === Node.ELEMENT_NODE &&
-            !node.hasAttribute("data-quote-id") &&
-            node.nodeName !== "BR"
-        ) {
-            const text = node.textContent.replace(/\u00a0/g, " ").trim();
-            if (text) {
+        if (node.nodeName === "BR") {
+            result.push({type: "text", value: "<br>"});
+            return;
+        }
+
+        if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.textContent.replace(/\u00a0/g, " ");
+            if (text.trim()) {
                 result.push({type: "text", value: text});
             }
+            return;
         }
-    });
+
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            node.childNodes.forEach(content);
+        }
+    };
+
+    container.childNodes.forEach(content);
 
     return result;
+};
+
+export const renderContent = async (itemsInput) => {
+    if (!itemsInput) return "";
+
+    const items = Array.isArray(itemsInput) ? itemsInput : JSON.parse(itemsInput);
+    if (!Array.isArray(items)) return "";
+
+    const parts = [];
+
+    for (const item of items) {
+        const type = item.type.toLowerCase();
+
+        if (!type) continue;
+
+        if (type === "text") {
+            if (item.value === "<br>") {
+            } else {
+                parts.push(sanitizeText(item.value));
+                parts.push("<br>");
+            }
+        }
+
+        if (type === "quote" && item.id) {
+            try {
+                const resp = await getCommentById(item.id);
+                if (!resp?.success || !resp?.data) {
+                    parts.push(`<div class="quote-block">Quote not found</div>`);
+                    continue;
+                }
+
+                const quoteItems = resp.data.contentItems;
+                const quoteText = getFirstTextValue(
+                    Array.isArray(quoteItems) ? quoteItems : JSON.parse(quoteItems)
+                );
+
+                parts.push(`<div class="quote-block" contenteditable="false" data-quote-id="${item.id}">${quoteText}</div>`);
+            } catch {
+                parts.push(`<div class="quote-block">Quote not found</div>`);
+            }
+        }
+    }
+
+    return parts.join("");
+};
+
+const getFirstTextValue = (items) => {
+    if (!Array.isArray(items)) return "[Quote]";
+
+    const firstValid = items.find(i => i?.type?.toLowerCase() === "text" && i.value?.trim());
+
+    return firstValid?.value?.replace(/\n/g, " ") || "[Quote]";
 };

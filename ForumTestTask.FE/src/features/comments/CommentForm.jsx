@@ -2,13 +2,7 @@ import {useEffect, useRef, useState} from "react";
 import {addComment, addReplyComment} from "./commentApi";
 import {addUser} from "../users/userApi";
 import {HtmlTagButtons} from "../../components/HtmlTagButtons";
-import {
-    convertToHtml,
-    parseEditorContent,
-    replaceBrToN,
-    sanitizeContentItems,
-    sanitizeText
-} from "../../services/CommentService";
+import {convertToHtml, parseEditorContent, renderContent, sanitizeContentItems} from "../../services/CommentService";
 import {CommentDto} from "./models/CommentDto";
 import {parseApiErrors} from "../parseApiErrors";
 import {EXTRA_HTML_ATTR} from "../../Constants";
@@ -30,64 +24,41 @@ export const CommentForm = ({
     const [errors, setErrors] = useState([]);
 
     useEffect(() => {
-        if (quote !== null) {
-            addQuote(quote);
-        }
-    }, [quote, setQuote]);
+        if (!quote) return;
+        insertQuote(quote);
+    }, [quote]);
 
-    useEffect(() => {
-        setErrors([]);
-        buildPreview();
-    }, [editableRef]); //does not work fine
-
-
-    const addQuote = async (quoteData) => {
-        console.log("quoteData: ", quoteData);
-
-        const {id: quoteId, contentItems} = quoteData;
-
-        const quoteText =
-            contentItems.find(i => i?.type?.toLowerCase() === "text" && i.value?.trim())
-                ?.value?.replace(/\n/g, " ") || "[Quote]";
-
-        if (!quoteId || !quoteText.trim()) return;
+    const insertQuote = async (quoteData) => {
+        const {id, contentItems} = quoteData;
+        if (!id) return;
 
         const editable = editableRef.current;
         if (!editable) return;
 
-        const lastNode = editable.lastChild;
-        if (
-            lastNode &&
-            ((lastNode.nodeType === Node.ELEMENT_NODE && lastNode.nodeName !== "BR") ||
-                (lastNode.nodeType === Node.TEXT_NODE && lastNode.textContent.trim() !== ""))
-        ) {
-            editable.appendChild(document.createElement("br"));
-        }
+        const text = contentItems
+            ?.find(i => i?.type?.toLowerCase() === "text" && i.value?.trim())
+            ?.value || "[Quote]";
 
-        // Create the quote span
-        const quoteSpan = document.createElement("span");
-        quoteSpan.setAttribute(EXTRA_HTML_ATTR.DATA_QUOTE_ID, quoteId);
-        quoteSpan.contentEditable = "false";
+        const span = document.createElement("span");
+        span.setAttribute(EXTRA_HTML_ATTR.DATA_QUOTE_ID, id);
+        span.contentEditable = "false";
+        span.innerHTML = text;
 
-        //here
-        quoteSpan.innerHTML = quoteText;
+        editable.appendChild(span);
 
-        editable.appendChild(quoteSpan);
-
-
-        editable.appendChild(document.createElement("br"));
         const textNode = document.createTextNode("\u00a0");
         editable.appendChild(textNode);
 
         const range = document.createRange();
         range.setStart(textNode, 0);
         range.collapse(true);
+
         const sel = window.getSelection();
         sel.removeAllRanges();
         sel.addRange(range);
 
-        // Clear quote state
-        setQuote({id: "", contentItems: []});
+        updatePreview();
+        setQuote(null);
     };
 
     const cancelReply = () => {
@@ -107,71 +78,71 @@ export const CommentForm = ({
         range.deleteContents();
         range.insertNode(span);
 
-        buildPreview();
+        updatePreview();
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const textContent = editableRef.current.innerHTML;
-        const errors = validateForm({userName, email, homePage, textContent});
+        const html = editableRef.current.innerHTML;
+        const errors = validateForm({userName, email, homePage, html});
 
         setErrors(errors);
 
-        if (errors.length === 0) {
-            try {
-                const userResult = await addUser({userName, email, homePage});
-                const userId = userResult.data.id;
+        if (errors.length === 0) return;
 
-                const contentItems = parseEditorContent(textContent);
-                const sanitizedContentItems = sanitizeContentItems(contentItems);
+        try {
+            const userResult = await addUser({userName, email, homePage});
+            const userId = userResult.data.id;
 
-                const newCommentDto = new CommentDto({
-                    userId: userId,
-                    contentItems: sanitizedContentItems,
-                })
+            const contentItems = parseEditorContent(html);
+            const sanitizedContentItems = sanitizeContentItems(contentItems);
 
-                const commentResult =
-                    parentId === 0
-                        ? await addComment(newCommentDto, file)
-                        : await addReplyComment(parentId, newCommentDto, file);
+            const newCommentDto = new CommentDto({
+                userId: userId,
+                contentItems: sanitizedContentItems,
+            })
 
-                if (commentResult.success) {
-                    setMessage("Comment added successfully!");
+            const commentResult =
+                parentId === 0
+                    ? await addComment(newCommentDto, file)
+                    : await addReplyComment(parentId, newCommentDto, file);
 
-                    updateData();
-
-                    setUserName("");
-                    setEmail("");
-                    setHomePage("");
-                    setFile(null);
-                    editableRef.current.innerHTML = "";
-                    setParentId(0);
-                    setPreview("");
-                    setErrors([])
-                }
-            } catch (error) {
-                const errorList = parseApiErrors(error);
-                setErrors(errorList);
+            if (commentResult.success) {
+                setMessage("Comment added successfully!");
+                resetForm();
+                updateData();
             }
+        } catch (error) {
+            const errorList = parseApiErrors(error);
+            setErrors(errorList);
         }
     }
+
+    const resetForm = () => {
+        setUserName("");
+        setEmail("");
+        setHomePage("");
+        setFile(null);
+        setPreview("");
+        setErrors([]);
+        editableRef.current.innerHTML = "";
+        setParentId(0);
+    };
 
     const validateForm = ({userName, email, homePage, textContent}) => {
         const errors = [];
 
-        if (!userName.trim()) {
-            errors.push("Enter your name");
-        } else if (userName.length < 3 || userName.length > 50) {
-            errors.push("UserName must be between 3 and 50 characters");
-        }
+        if (!userName.trim()) errors.push("Enter your name");
+        if (userName.length < 3 || userName.length > 50) errors.push("UserName must be between 3 and 50 characters");
+
 
         if (!email.trim()) {
             errors.push("Enter your email");
         } else {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(email)) {
-                errors.push("Email is not a valid e-mail address");
+                errors.push("Invalid email");
             }
         }
 
@@ -193,15 +164,15 @@ export const CommentForm = ({
         return errors;
     };
 
-
-    const buildPreview = () => {
+    const updatePreview = async () => {
         if (!editableRef.current) return;
 
-        const htmlText = editableRef.current.innerHTML;
-        const normalizedText = replaceBrToN(htmlText);
-        const sanitizedText = convertToHtml(sanitizeText(normalizedText));
+        const html = editableRef.current.innerHTML;
+        const contentItems = parseEditorContent(html);
+        const sanitizedContentItems = sanitizeContentItems(contentItems);
+        const result = await renderContent(sanitizedContentItems);
 
-        setPreview(sanitizedText);
+        setPreview(convertToHtml(result));
     };
 
     return (
@@ -247,7 +218,7 @@ export const CommentForm = ({
                     ref={editableRef}
                     contentEditable
                     className="comment-editor"
-                    onInput={buildPreview}
+                    onInput={updatePreview}
                 ></div>
 
 
@@ -259,24 +230,17 @@ export const CommentForm = ({
             {preview && (
                 <div
                     className="preview-box"
-                    style={{whiteSpace: "pre-line"}}
                     dangerouslySetInnerHTML={{__html: preview}}
                 />
             )}
 
             {errors.length > 0 && (
                 <ul className="message-error">
-                    {errors.map((err, i) => (
-                        <li key={i}>{err}</li>
-                    ))}
+                    {errors.map((e, i) => <li key={i}>{e}</li>)}
                 </ul>
             )}
 
-            {message && (
-                <p className={errors.length > 0 ? "message-error" : "message-success"}>
-                    {message}
-                </p>
-            )}
+            {message && <p className="message-success">{message}</p>}
         </form>
     );
 };

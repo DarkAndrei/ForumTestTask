@@ -12,11 +12,11 @@ export const HTML_TAGS = {
     STRONG: "strong",
 }
 
-export const EXTRA_HTML_TAGS = {
-    BR: "br"
-}
-
 export const HTML_ATTR = {
     HREF: "href",
     TITLE: "title"
+}
+
+export const EXTRA_HTML_ATTR = {
+    DATA_QUOTE_ID: "data-quote-id"
 }

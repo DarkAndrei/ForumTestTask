@@ -1,6 +1,6 @@
 export class CommentDto {
-    constructor({userId, text, parentId = 0}) {
+    constructor({userId, contentItems}) {
         this.userId = userId;
-        this.text = text;
+        this.contentItems = contentItems;
     }
 }
