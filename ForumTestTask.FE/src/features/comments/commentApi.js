@@ -5,7 +5,7 @@ export async function addComment(newComment, file) {
     const formData = new FormData();
 
     formData.append("userId", newComment.userId);
-    formData.append("text", newComment.text);
+    formData.append("contentItems", JSON.stringify(newComment.contentItems));
 
     if (file) {
         formData.append("file", file);
@@ -48,7 +48,7 @@ export async function addReplyComment(parentId, newReplyComment, file) {
 
     formData.append("parentId", parentId);
     formData.append("userId", newReplyComment.userId);
-    formData.append("text", newReplyComment.text);
+    formData.append("contentItems", JSON.stringify(newReplyComment.contentItems));
 
     if (file) {
         formData.append("file", file);
@@ -67,4 +67,21 @@ export async function addReplyComment(parentId, newReplyComment, file) {
 
     const data = await response.json();
     return {success: true, data};
+}
+
+export async function getCommentById(parentId) {
+    try {
+        const response = await fetch(BACKEND_API_URL + COMMENTS_ENDPOINT + "/" + parentId, {
+            method: "GET",
+            headers: {"Content-Type": "application/json"},
+        });
+
+        if (!response.ok) new Error("Failed to fetch comments");
+
+        return await response.json();
+
+    } catch (error) {
+        console.error("Error fetching comments:", error);
+        return [];
+    }
 }

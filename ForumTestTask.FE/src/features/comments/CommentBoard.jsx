@@ -5,11 +5,11 @@ import {
     sortByCreatedAt,
     sortByEmail,
     sortByUserName
-} from "../services/CommentService.js"
-import {SortButtons} from "./SortButtons";
-import {SORT_FIELDS} from "../Constants";
-import {Comment} from "../features/comments/Comment";
-import {getUserNameById} from "../services/UserService";
+} from "../../services/CommentService.js"
+import {SortButtons} from "../../components/SortButtons";
+import {SORT_FIELDS} from "../../Constants";
+import {getUserNameById} from "../../services/UserService";
+import CommentBlock from "./CommentBlock";
 
 export const CommentBoard = ({comments, users, onReplyClick, onQuoteClick}) => {
     const [repliesByComment, setRepliesByComment] = useState(new Map());
@@ -70,7 +70,7 @@ export const CommentBoard = ({comments, users, onReplyClick, onQuoteClick}) => {
     const renderComments = (commentsArray, level = 0) => {
         return commentsArray.map(comment => (
             <div key={comment.id}>
-                <Comment
+                <CommentBlock
                     comment={comment}
                     userName={getUserNameById(users, comment.userId)}
                     level={level}

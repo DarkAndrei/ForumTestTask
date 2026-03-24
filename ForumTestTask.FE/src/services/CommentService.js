@@ -81,6 +81,13 @@ export const reverseMap = (mapComments) => {
 
 export const convertToHtml = (input) => {
     if (!input) return "";
+
+    if (Array.isArray(input)) {
+        input = input
+            .map(item => item.type === "text" ? item.value : "")
+            .join("\n");
+    }
+
     return input
         .replace(/\[b](.*?)\[\/b]/gi, "<b>$1</b>")
         .replace(/\[i](.*?)\[\/i]/gi, "<i>$1</i>")
@@ -105,10 +112,22 @@ export const sanitizeText = (input) => {
             HTML_ATTR.HREF,
             HTML_ATTR.TITLE
             ,
-            EXTRA_HTML_ATTR.CLASS,
+            EXTRA_HTML_ATTR.DATA_QUOTE_ID
         ],
     });
 }
+
+export const sanitizeContentItems = (items) => {
+    return items.map(item => {
+        if (item.type === "text") {
+            return {
+                ...item,
+                value: sanitizeText(item.value)
+            };
+        }
+        return item;
+    });
+};
 
 export const replaceBrToN = (input) => {
     return input.replace(/<div><br><\/div>/gi, '\n')
@@ -117,3 +136,48 @@ export const replaceBrToN = (input) => {
         .replace(/<br\s*\/?>/gi, '\n')
         .replace(/^\s*\n+/, "");
 }
+
+export const parseEditorContent = (html) => {
+    const container = document.createElement("div");
+    container.innerHTML = html;
+
+    const result = [];
+
+    container.childNodes.forEach(node => {
+        // TEXT NODE
+        if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.textContent.replace(/\u00a0/g, " ").trim();
+            if (text) {
+                result.push({type: "text", value: text});
+            }
+        }
+
+        // BR → treat as newline
+        if (node.nodeName === "BR") {
+            result.push({type: "text", value: "\n"});
+        }
+
+        // QUOTE NODE
+        if (
+            node.nodeType === Node.ELEMENT_NODE &&
+            node.hasAttribute("data-quote-id")
+        ) {
+            const id = Number(node.getAttribute("data-quote-id"));
+            result.push({type: "quote", id});
+        }
+
+        // OTHER ELEMENTS (optional: keep formatting)
+        if (
+            node.nodeType === Node.ELEMENT_NODE &&
+            !node.hasAttribute("data-quote-id") &&
+            node.nodeName !== "BR"
+        ) {
+            const text = node.textContent.replace(/\u00a0/g, " ").trim();
+            if (text) {
+                result.push({type: "text", value: text});
+            }
+        }
+    });
+
+    return result;
+};
