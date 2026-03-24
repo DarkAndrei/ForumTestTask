@@ -1,11 +1,11 @@
 import './App.css';
 import CommentForm from "./features/comments/CommentForm";
-import CommentBoard from "./components/CommentBoard";
+import CommentBoard from "./features/comments/CommentBoard";
 import {useState} from "react";
 import {useCommentsData} from "./hooks/useCommentsData";
 
 export const App = () => {
-    const [quoteText, setQuoteText] = useState("");
+    const [quote, setQuote] = useState({id: "", contentItems: []});
     const [parentCommentId, setParentCommentId] = useState(0);
 
     const {comments, users, updateData} = useCommentsData();
@@ -14,9 +14,25 @@ export const App = () => {
         setParentCommentId(commentId);
     }
 
-    const handleQuoteClick = (text) => {
-        setQuoteText(text);
+    const handleQuoteClick = (quoteData) => {
+        handleSetQuote(quoteData);
     }
+
+    const handleSetQuote = (data) => {
+        // Parse the JSON string from quoteText
+        let contentItems = [];
+        try {
+            contentItems = JSON.parse(data.quoteText);
+        } catch (err) {
+            console.error("Invalid JSON in quoteText", err);
+            contentItems = [];
+        }
+
+        setQuote({
+            id: data.commentId,       // store the comment ID
+            contentItems: contentItems // parsed array
+        });
+    };
 
     return (
         <div className="App">
@@ -25,8 +41,8 @@ export const App = () => {
                     <CommentForm
                         parentId={parentCommentId}
                         setParentId={setParentCommentId}
-                        quoteText={quoteText}
-                        setQuoteText={setQuoteText}
+                        quote={quote}
+                        setQuote={setQuote}
                         updateData={updateData}
                     />
                 </div>
