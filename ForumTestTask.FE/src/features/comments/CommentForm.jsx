@@ -2,15 +2,22 @@ import {useEffect, useRef, useState} from "react";
 import {addComment, addReplyComment} from "./commentApi";
 import {addUser} from "../users/userApi";
 import {HtmlTagButtons} from "../../components/HtmlTagButtons";
-import {convertToHtml, replaceBrToN, sanitizeText} from "../../services/CommentService";
+import {
+    convertToHtml,
+    parseEditorContent,
+    replaceBrToN,
+    sanitizeContentItems,
+    sanitizeText
+} from "../../services/CommentService";
 import {CommentDto} from "./models/CommentDto";
 import {parseApiErrors} from "../parseApiErrors";
+import {EXTRA_HTML_ATTR} from "../../Constants";
 
 export const CommentForm = ({
                                 parentId = 0,
                                 setParentId,
-                                quoteText = "",
-                                setQuoteText,
+                                quote,
+                                setQuote,
                                 updateData
                             }) => {
     const [userName, setUserName] = useState("");
@@ -23,44 +30,64 @@ export const CommentForm = ({
     const [errors, setErrors] = useState([]);
 
     useEffect(() => {
-        if (quoteText.trim()) {
-            addQuote(quoteText);
-            setQuoteText("");
+        if (quote !== null) {
+            addQuote(quote);
         }
-    }, [quoteText, setQuoteText]);
+    }, [quote, setQuote]);
 
     useEffect(() => {
         setErrors([]);
-    }, [editableRef]);
+        buildPreview();
+    }, [editableRef]); //does not work fine
 
-    const addQuote = (quoteText) => {
+
+    const addQuote = async (quoteData) => {
+        console.log("quoteData: ", quoteData);
+
+        const {id: quoteId, contentItems} = quoteData;
+
+        const quoteText =
+            contentItems.find(i => i?.type?.toLowerCase() === "text" && i.value?.trim())
+                ?.value?.replace(/\n/g, " ") || "[Quote]";
+
+        if (!quoteId || !quoteText.trim()) return;
+
         const editable = editableRef.current;
+        if (!editable) return;
 
-        const sanitizedQuote = sanitizeText(quoteText);
-
-
-        if (editable.childNodes.length > 0 || editable.lastChild !== "br") {
+        const lastNode = editable.lastChild;
+        if (
+            lastNode &&
+            ((lastNode.nodeType === Node.ELEMENT_NODE && lastNode.nodeName !== "BR") ||
+                (lastNode.nodeType === Node.TEXT_NODE && lastNode.textContent.trim() !== ""))
+        ) {
             editable.appendChild(document.createElement("br"));
         }
 
+        // Create the quote span
         const quoteSpan = document.createElement("span");
-
-        quoteSpan.className = "quote-block";
+        quoteSpan.setAttribute(EXTRA_HTML_ATTR.DATA_QUOTE_ID, quoteId);
         quoteSpan.contentEditable = "false";
-        quoteSpan.innerHTML = sanitizedQuote;
+
+        //here
+        quoteSpan.innerHTML = quoteText;
 
         editable.appendChild(quoteSpan);
 
-        editable.appendChild(document.createElement("br"));
-        editable.appendChild(document.createElement("br"));
 
+        editable.appendChild(document.createElement("br"));
+        const textNode = document.createTextNode("\u00a0");
+        editable.appendChild(textNode);
 
         const range = document.createRange();
-        range.setStartAfter(editable.lastChild);
+        range.setStart(textNode, 0);
         range.collapse(true);
         const sel = window.getSelection();
         sel.removeAllRanges();
         sel.addRange(range);
+
+        // Clear quote state
+        setQuote({id: "", contentItems: []});
     };
 
     const cancelReply = () => {
@@ -87,23 +114,21 @@ export const CommentForm = ({
         e.preventDefault();
 
         const textContent = editableRef.current.innerHTML;
-
-        console.log("textContent", textContent);
-
         const errors = validateForm({userName, email, homePage, textContent});
 
         setErrors(errors);
 
         if (errors.length === 0) {
-            const normalizedText = replaceBrToN(textContent);
-            const sanitizedText = sanitizeText(normalizedText);
-
             try {
                 const userResult = await addUser({userName, email, homePage});
                 const userId = userResult.data.id;
+
+                const contentItems = parseEditorContent(textContent);
+                const sanitizedContentItems = sanitizeContentItems(contentItems);
+
                 const newCommentDto = new CommentDto({
                     userId: userId,
-                    text: sanitizedText,
+                    contentItems: sanitizedContentItems,
                 })
 
                 const commentResult =
