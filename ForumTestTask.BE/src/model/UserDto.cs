@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using System.Runtime.InteropServices;
+
 
 public class UserDto
 {
@@ -13,7 +15,7 @@ public class UserDto
     [StringLength(100)]
     public required string Email { get; set; }
 
-    [Url]
+    [OptionalUrl]
     [StringLength(200)]
     public string? HomePage { get; set; }
 }
