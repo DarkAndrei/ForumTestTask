@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,43 +18,48 @@ public class CommentsController : ControllerBase
         _htmlSanitizerService = htmlSanitizerService;
     }
 
-    [HttpGet]
-    public IActionResult GetComments()
-    {
-        var comments = _context.Comments.ToList();
-        return Ok(comments);
-    }
-
     [RequestSizeLimit(100_000_000)]
     [HttpPost]
     public async Task<IActionResult> AddComment(
-        [FromForm] CommentDto commentDto,
-        [FromForm] IFormFile? file
-        )
+    [FromForm] CommentDto commentDto,
+    [FromForm] IFormFile? file
+)
     {
+        if (!ModelState.IsValid)
+            return BadRequest(new { success = false, errors = ModelState });
+
         string? filePath = null;
-
-        Console.WriteLine($"Received comment: UserId={commentDto.UserId}, Text={commentDto.Text}, File={file?.FileName}");
-
-        var userExists = await _context.Users.AnyAsync(u => u.Id == commentDto.UserId);
-
-        if (!userExists)
-            return BadRequest("User does not exist.");
-
         if (file != null && file.Length > 0)
         {
             filePath = await _fileService.SaveAsync(file);
-
             if (filePath == null)
-                return BadRequest("Invalid file.");
+                return BadRequest(new { success = false, message = "Invalid file." });
         }
 
-        commentDto.Text = _htmlSanitizerService.Sanitize(commentDto.Text);
+        List<CommentContentItem>? contentItems;
+
+        try
+        {
+            contentItems = JsonSerializer.Deserialize<List<CommentContentItem>>(commentDto.ContentItems);
+
+            if (contentItems == null || !contentItems.Any())
+                return BadRequest(new { success = false, message = "No content items provided." });
+        }
+        catch (JsonException)
+        {
+            return BadRequest(new { success = false, message = "Invalid ContentItems JSON." });
+        }
+
+        var sanitizedItems = _htmlSanitizerService.SanitizeContentItems(contentItems);
+        var serializedContent = JsonSerializer.Serialize(sanitizedItems, new JsonSerializerOptions
+        {
+            Converters = { new JsonStringEnumConverter() }
+        });
 
         var comment = new Comment
         {
             UserId = commentDto.UserId,
-            Text = commentDto.Text,
+            ContentItems = serializedContent,
             CreatedAt = DateTime.UtcNow,
             FilePath = filePath
         };
@@ -60,38 +67,58 @@ public class CommentsController : ControllerBase
         _context.Comments.Add(comment);
         await _context.SaveChangesAsync();
 
-        return Ok(new { Message = "Comment saved successfully" });
+        return Ok(new { success = true, message = "Comment saved successfully" });
     }
 
     [RequestSizeLimit(100_000_000)]
     [HttpPut("reply")]
     public async Task<IActionResult> AddReplyComment(
-        [FromForm] int parentId,
-        [FromForm] CommentDto commentDto,
-        [FromForm] IFormFile? file
-        )
+    [FromForm] int parentId,
+    [FromForm] CommentDto commentDto,
+    [FromForm] IFormFile? file
+    )
     {
-        string? filePath = null;
+        if (!ModelState.IsValid)
+            return BadRequest(new { success = false, errors = ModelState });
 
         var parentComment = await _context.Comments.FindAsync(parentId);
-
         if (parentComment == null)
-            return NotFound("Parent comment not found.");
+            return BadRequest(new { success = false, Message = "Parent comment not found." });
+
+        string? filePath = null;
 
         if (file != null && file.Length > 0)
         {
             filePath = await _fileService.SaveAsync(file);
-
             if (filePath == null)
-                return BadRequest("Invalid file.");
+                return BadRequest(new { success = false, Message = "Invalid file." });
         }
 
-        commentDto.Text = _htmlSanitizerService.Sanitize(commentDto.Text);
+        List<CommentContentItem>? contentItems;
+
+        try
+        {
+            contentItems = JsonSerializer.Deserialize<List<CommentContentItem>>(commentDto.ContentItems);
+
+            if (contentItems == null || !contentItems.Any())
+                return BadRequest(new { success = false, message = "No content items provided." });
+        }
+        catch (JsonException)
+        {
+            return BadRequest(new { success = false, message = "Invalid ContentItems JSON." });
+        }
+
+        var sanitizedItems = _htmlSanitizerService.SanitizeContentItems(contentItems);
+
+        var serializedContent = JsonSerializer.Serialize(sanitizedItems, new JsonSerializerOptions
+        {
+            Converters = { new JsonStringEnumConverter() }
+        });
 
         var replyComment = new Comment
         {
             UserId = commentDto.UserId,
-            Text = commentDto.Text,
+            ContentItems = serializedContent,
             CreatedAt = DateTime.UtcNow,
             FilePath = filePath
         };
@@ -101,51 +128,91 @@ public class CommentsController : ControllerBase
 
         parentComment.ReplyIds ??= new List<int>();
         parentComment.ReplyIds.Add(replyComment.Id);
-
         await _context.SaveChangesAsync();
 
-        return Ok(new { Message = "Comment saved successfully" });
+        return Ok(new { success = true, Message = "Reply comment saved successfully" });
     }
 
+    [HttpGet]
+    public IActionResult GetComments()
+    {
+        var comments = _context.Comments.ToList();
+        if (comments == null || !comments.Any())
+        {
+            return BadRequest(new { success = false, Message = "No comments found." });
+        }
+
+        return Ok(new { success = true, data = comments });
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetComment(int id)
+    {
+        var comment = await _context.Comments.FindAsync(id);
+
+        if (comment == null)
+        {
+            return BadRequest(new { success = false, Message = "Comment not found." });
+        }
+
+        return Ok(new { success = true, data = comment });
+    }
 
     // temporary method for bulk comments creation without file upload
     [RequestSizeLimit(100_000_000)]
     [HttpPost("bulk")]
     public async Task<IActionResult> AddComments([FromBody] List<CommentDto> commentsDto)
     {
-        if (commentsDto == null || commentsDto.Count == 0)
-            return BadRequest("No comments provided.");
+        if (!ModelState.IsValid)
+            return BadRequest(new { success = false, errors = ModelState });
 
         var result = new List<object>();
 
         foreach (var commentDto in commentsDto)
         {
             var userExists = await _context.Users.AnyAsync(u => u.Id == commentDto.UserId);
-
             if (!userExists)
             {
-                result.Add(new { commentDto.UserId, commentDto.Text, Status = "User does not exist" });
+                result.Add(new { commentDto.UserId, Status = "User does not exist" });
                 continue;
             }
 
-            string? filePath = null;
+            List<CommentContentItem>? contentItems;
 
-            commentDto.Text = _htmlSanitizerService.Sanitize(commentDto.Text);
+            try
+            {
+                contentItems = JsonSerializer.Deserialize<List<CommentContentItem>>(commentDto.ContentItems);
+
+                if (contentItems == null || !contentItems.Any())
+                    return BadRequest(new { success = false, message = "No content items provided." });
+            }
+            catch (JsonException)
+            {
+                return BadRequest(new { success = false, message = "Invalid ContentItems JSON." });
+            }
+
+            var sanitizedItems = _htmlSanitizerService.SanitizeContentItems(contentItems);
+
+            var serializedContent = JsonSerializer.Serialize(sanitizedItems, new JsonSerializerOptions
+            {
+                Converters = { new JsonStringEnumConverter() }
+            });
 
             var comment = new Comment
             {
                 UserId = commentDto.UserId,
-                Text = commentDto.Text,
+                ContentItems = serializedContent,
                 CreatedAt = DateTime.UtcNow,
-                FilePath = filePath
+                FilePath = null
             };
 
             _context.Comments.Add(comment);
-            result.Add(new { commentDto.UserId, commentDto.Text, Status = "Created" });
+
+            result.Add(new { comment, Status = "Created" });
         }
 
         await _context.SaveChangesAsync();
 
-        return Ok(result);
+        return Ok(new { success = true, data = result });
     }
 }

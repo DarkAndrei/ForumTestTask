@@ -13,14 +13,18 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost]
-    public IActionResult CreateUser(UserDto userDto)
+    public IActionResult AddUser([FromBody] UserDto userDto)
     {
-        var existingUser = _context.Users.FirstOrDefault(u => u.UserName == userDto.UserName && u.Email == userDto.Email);
+        Console.WriteLine($"Received user: {userDto.UserName}, {userDto.Email}, {userDto.HomePage}");
+
+        if (!ModelState.IsValid)
+            return BadRequest(new { success = false, errors = ModelState });
+
+        var existingUser = _context.Users
+            .FirstOrDefault(u => u.UserName == userDto.UserName && u.Email == userDto.Email);
 
         if (existingUser != null)
-        {
-            return Ok(existingUser.Id);
-        }
+            return Ok(new { success = true, data = new { id = existingUser.Id } });
 
         var newUser = new User
         {
@@ -31,15 +35,47 @@ public class UsersController : ControllerBase
 
         _context.Users.Add(newUser);
         _context.SaveChanges();
-        return Ok(newUser.Id);
+
+        return CreatedAtAction(nameof(AddUser), new { id = newUser.Id }, new
+        {
+            success = true,
+            data = new { id = newUser.Id }
+        });
     }
 
-    // Accepts a list of users from JSON
-    [HttpPost("bulk")]
-    public IActionResult CreateUsers([FromBody] List<UserDto> usersDto)
+    [HttpGet]
+    public IActionResult GetUsers()
     {
+        var users = _context.Users.ToList();
+        if (users == null || !users.Any())
+        {
+            return BadRequest(new { success = false, Message = "No users found." });
+        }
+
+        return Ok(new { success = true, data = users });
+    }
+
+    [HttpGet("{id}")]
+    public IActionResult GetUser(int id)
+    {
+        var userDto = _context.Users.Find(id);
+        if (userDto == null)
+        {
+            return BadRequest(new { success = false, Message = "User not found." });
+        }
+        return Ok(new { success = true, data = userDto });
+    }
+
+    //temporarily file for accepting a list of users from JSON
+    [HttpPost("bulk")]
+    public IActionResult AddUsers([FromBody] List<UserDto> usersDto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new { success = false, errors = ModelState });
+
+
         if (usersDto == null || !usersDto.Any())
-            return BadRequest("No users provided.");
+            return BadRequest(new { success = false, Message = "No users provided." });
 
         var result = new List<object>();
 
@@ -51,12 +87,10 @@ public class UsersController : ControllerBase
 
             if (existingUser != null)
             {
-                // Add existing user's Id
                 result.Add(new { UserName = userDto.UserName, Email = userDto.Email, Id = existingUser.Id });
                 continue;
             }
 
-            // Create new user
             var newUser = new User
             {
                 UserName = userDto.UserName,
@@ -70,24 +104,6 @@ public class UsersController : ControllerBase
             result.Add(new { UserName = userDto.UserName, Email = userDto.Email, Id = newUser.Id });
         }
 
-        return Ok(result);
-    }
-
-    [HttpGet]
-    public IActionResult GetUsers()
-    {
-        var users = _context.Users.ToList();
-        return Ok(users);
-    }
-
-    [HttpGet("{id}")]
-    public IActionResult GetUser(int id)
-    {
-        var userDto = _context.Users.Find(id);
-        if (userDto == null)
-        {
-            return NotFound("User not found.");
-        }
-        return Ok(userDto);
+        return Ok(new { success = true, data = result });
     }
 }

@@ -30,7 +30,6 @@ public class FileService
         return null;
     }
 
-
     private async Task<string?> SaveImage(IFormFile file)
     {
         var fileName = GenerateUniqueFileName(file.FileName);
@@ -50,7 +49,7 @@ public class FileService
         }
         catch
         {
-            return null; // invalid or corrupted image
+            return null;
         }
 
         return _fileFolder + fileName;
@@ -70,7 +69,7 @@ public class FileService
         return _fileFolder + fileName;
     }
 
-    public string GenerateUniqueFileName(string originalFileName)
+    private string GenerateUniqueFileName(string originalFileName)
     {
         var extension = Path.GetExtension(originalFileName);
         return Guid.NewGuid().ToString() + extension;
