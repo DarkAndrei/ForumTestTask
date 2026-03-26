@@ -7,11 +7,19 @@ export const useCommentsData = () => {
     const [users, setUsers] = useState({});
 
     const updateData = useCallback(async () => {
-        const usersData = await getUsers();
-        const commentsData = await getComments();
+        const usersResponse = await getUsers();
+        const commentsResponse = await getComments();
 
-        setUsers(usersData);
-        setComments(commentsData ?? []);
+        if (!usersResponse.success) {
+            return console.log(usersResponse.message);
+        }
+
+        if (!commentsResponse.success) {
+            return console.log(commentsResponse.message);
+        }
+
+        setUsers(usersResponse.data.data);
+        setComments(commentsResponse.data.data);
     }, []);
 
     useEffect(() => {
