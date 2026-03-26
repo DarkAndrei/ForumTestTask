@@ -147,7 +147,7 @@ export const parseEditorContent = (html) => {
         ) {
             const id = Number(node.getAttribute("data-quote-id"));
             result.push({type: "quote", id});
-            return; // important: don't go inside quote
+            return;
         }
 
         if (node.nodeName === "BR") {
@@ -173,13 +173,23 @@ export const parseEditorContent = (html) => {
     return result;
 };
 
-export const renderContent = async (itemsInput) => {
+export const renderContent = async (itemsInput, file) => {
     if (!itemsInput) return "";
 
     const items = Array.isArray(itemsInput) ? itemsInput : JSON.parse(itemsInput);
     if (!Array.isArray(items)) return "";
 
     const parts = [];
+
+    if (file) {
+        const previewUrl = URL.createObjectURL(file);
+
+        if (file.type.startsWith("image/")) {
+            parts.push(`<div class="file-preview"><img src="${previewUrl}" alt="preview"/></div>`);
+        } else {
+            parts.push(`<div class="file-preview"><a href="${previewUrl}" target="_blank" rel="noreferrer">${file.name}</a></div>`);
+        }
+    }
 
     for (const item of items) {
         const type = item.type.toLowerCase();
@@ -217,6 +227,20 @@ export const renderContent = async (itemsInput) => {
     return parts.join("");
 };
 
+export const getDateString = (date) => {
+    const d = new Date(date);
+
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    const seconds = String(d.getSeconds()).padStart(2, "0");
+
+    return `${year}-${month}-${day} в ${hours}:${minutes}:${seconds}`;
+};
+
 const getFirstTextValue = (items) => {
     if (!Array.isArray(items)) return "[Quote]";
 
@@ -224,3 +248,5 @@ const getFirstTextValue = (items) => {
 
     return firstValid?.value?.replace(/\n/g, " ") || "[Quote]";
 };
+
+

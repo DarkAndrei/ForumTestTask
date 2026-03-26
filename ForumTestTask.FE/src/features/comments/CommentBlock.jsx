@@ -1,9 +1,8 @@
-import {sanitizeText} from "../../services/CommentService";
 import {BACKEND_URL} from "../../apiConfig";
 import 'lightbox2/dist/css/lightbox.min.css';
 import 'lightbox2/dist/js/lightbox-plus-jquery.min.js';
-import {getCommentById} from "./commentApi";
 import {useEffect, useState} from "react";
+import {convertToHtml, getDateString, renderContent} from "../../services/CommentService";
 
 export const CommentBlock = ({comment, userName, level, onReplyClick, onQuoteClick}) => {
     const [htmlContent, setHtmlContent] = useState("");
@@ -11,65 +10,19 @@ export const CommentBlock = ({comment, userName, level, onReplyClick, onQuoteCli
     useEffect(() => {
         const loadContent = async () => {
             const rendered = await renderContent(comment.contentItems);
-            setHtmlContent(rendered);
+            setHtmlContent(convertToHtml(rendered));
         };
         loadContent();
     }, [comment]);
 
-    const getFirstTextValue = (items) => {
-        if (!Array.isArray(items)) return "[Quote]";
-        const firstValid = items.find(i => i?.type?.toLowerCase() === "text" && i.value?.trim());
-        return firstValid?.value?.replace(/\n/g, " ") || "[Quote]";
-    };
-
-    const renderContent = async (itemsInput) => {
-        if (!itemsInput) return "";
-
-        let items = Array.isArray(itemsInput) ? itemsInput : JSON.parse(itemsInput);
-        if (!Array.isArray(items)) return "";
-
-        const parts = [];
-
-        for (const item of items) {
-            if (!item?.type) continue;
-
-            const type = item.type.toLowerCase();
-
-            if (type === "text") {
-                parts.push(item.value === "\n" ? "<br>" : sanitizeText(item.value ?? ""));
-            }
-
-            if (type === "quote" && item.id) {
-                try {
-                    const resp = await getCommentById(item.id);
-                    if (!resp?.success || !resp?.data) {
-                        parts.push(`<div class="quote-block">Quote not found</div>`);
-                        continue;
-                    }
-
-                    const quoteItems = resp.data.contentItems;
-                    const quoteText = getFirstTextValue(
-                        Array.isArray(quoteItems) ? quoteItems : JSON.parse(quoteItems)
-                    );
-
-                    parts.push(`<div class="quote-block" data-quote-id="${item.id}">${quoteText}</div>`);
-                } catch {
-                    parts.push(`<div class="quote-block">Quote not found</div>`);
-                }
-            }
-        }
-
-        return parts.join("");
-    };
-
     const fileUrl = comment.filePath ? `${BACKEND_URL}${comment.filePath}` : null;
-
+    
     return (
         <div className="comment-card" style={{marginLeft: `${level * 20}px`}}>
             <div className="comment-header">
                 <img className="avatar" src="https://i.pravatar.cc/40" alt="User avatar"/>
                 <span className="username">{userName}</span>
-                <span className="comment-date">{comment.createdAt}</span>
+                <span className="comment-date">{getDateString(comment.createdAt)}</span>
             </div>
 
             {fileUrl && (
