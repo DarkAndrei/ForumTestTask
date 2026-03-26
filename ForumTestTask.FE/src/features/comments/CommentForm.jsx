@@ -1,6 +1,6 @@
 import {useEffect, useRef, useState} from "react";
 import {addComment, addReplyComment} from "./commentApi";
-import {addUser} from "../users/userApi";
+import {addUser, getUser} from "../users/userApi";
 import {HtmlTagButtons} from "../../components/HtmlTagButtons";
 import {convertToHtml, parseEditorContent, renderContent, sanitizeContentItems} from "../../services/CommentService";
 import {CommentDto} from "./models/CommentDto";
@@ -28,6 +28,10 @@ export const CommentForm = ({
         insertQuote(quote);
     }, [quote]);
 
+    useEffect(() => {
+        updatePreview();
+    }, [file, setFile])
+
     const insertQuote = async (quoteData) => {
         const {id, contentItems} = quoteData;
         if (!id) return;
@@ -42,15 +46,18 @@ export const CommentForm = ({
         const span = document.createElement("span");
         span.setAttribute(EXTRA_HTML_ATTR.DATA_QUOTE_ID, id);
         span.contentEditable = "false";
-        span.innerHTML = text;
+        span.innerHTML = convertToHtml(text);
 
         editable.appendChild(span);
 
-        const textNode = document.createTextNode("\u00a0");
-        editable.appendChild(textNode);
+        const br = document.createElement("br");
+        editable.appendChild(br);
+
+        // const spaceNode = document.createTextNode("");
+        // editable.appendChild(spaceNode);
 
         const range = document.createRange();
-        range.setStart(textNode, 0);
+        range.setStart(br, 0);
         range.collapse(true);
 
         const sel = window.getSelection();
@@ -85,7 +92,7 @@ export const CommentForm = ({
         e.preventDefault();
 
         const html = editableRef.current.innerHTML;
-        const errors = validateForm({userName, email, homePage, html});
+        const errors = await validateForm({userName, email, homePage, html});
 
         setErrors(errors);
 
@@ -115,6 +122,7 @@ export const CommentForm = ({
             }
         } catch (error) {
             const errorList = parseApiErrors(error);
+            setMessage("");
             setErrors(errorList);
         }
     }
@@ -130,7 +138,7 @@ export const CommentForm = ({
         setParentId(0);
     };
 
-    const validateForm = ({userName, email, homePage, textContent}) => {
+    const validateForm = async ({userName, email, homePage, textContent}) => {
         const errors = [];
 
         if (!userName.trim()) errors.push("Enter your name");
@@ -164,55 +172,57 @@ export const CommentForm = ({
         return errors;
     };
 
+    const handleRemoveFile = () => {
+        setFile(null);
+    };
+
     const updatePreview = async () => {
         if (!editableRef.current) return;
+        console.log('Editing preview');
 
         const html = editableRef.current.innerHTML;
         const contentItems = parseEditorContent(html);
         const sanitizedContentItems = sanitizeContentItems(contentItems);
-        const result = await renderContent(sanitizedContentItems);
+        const result = await renderContent(sanitizedContentItems, file);
 
         setPreview(convertToHtml(result));
     };
 
     return (
         <form onSubmit={handleSubmit} className="comment-form">
-            <input
-                type="text"
-                placeholder="Write your name..."
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-            />
+            <div className="form-group">
+                <label>User Name</label>
+                <input
+                    type="text"
+                    placeholder="Enter your name..."
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                />
+            </div>
 
-            <input
-                type="text"
-                placeholder="Write your email..."
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-            />
+            <div className="form-group">
+                <label>Email</label>
+                <input
+                    type="text"
+                    placeholder="Enter your email..."
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                />
+            </div>
 
-            <input
-                type="text"
-                placeholder="Write your home page..."
-                value={homePage}
-                onChange={(e) => setHomePage(e.target.value)}
-            />
-
-            <HtmlTagButtons handleClickTagButton={handleClickTagButton}/>
+            <div className="form-group">
+                <label>Home Page (optional)</label>
+                <input
+                    type="text"
+                    placeholder="https://example.com"
+                    value={homePage}
+                    onChange={(e) => setHomePage(e.target.value)}
+                />
+            </div>
 
             <div>
-                {parentId !== 0 &&
-                    <div className="reply-box">
-                        Reply to user with ID: {parentId}
-                        <button
-                            type="button"
-                            className="reply-close"
-                            onClick={cancelReply}
-                        >
-                            ×
-                        </button>
-                    </div>
-                }
+                <label>Comment</label>
+                <HtmlTagButtons handleClickTagButton={handleClickTagButton}/>
 
                 <div
                     ref={editableRef}
@@ -220,18 +230,44 @@ export const CommentForm = ({
                     className="comment-editor"
                     onInput={updatePreview}
                 ></div>
-
-
+                {parentId !== 0 && (
+                    <div className="reply-box">
+                        Reply to user with ID: {getUser(parentId)}
+                        <button type="button" className="reply-close" onClick={cancelReply}>
+                            ×
+                        </button>
+                    </div>
+                )}
             </div>
-            <input type="file" onChange={(e) => setFile(e.target.files[0])}/>
 
-            <button type="submit">Submit</button>
+            <div className="form-group">
+                <label>Attach file (optional)</label>
+                <input
+                    type="file"
+                    onChange={(e) => {
+                        const f = e.target.files[0];
+                        setFile(f);
+                        updatePreview();
+                    }}/>
+                {file && <button
+                    className="remove-file-button"
+                    type="button"
+                    onClick={handleRemoveFile}
+                >
+                    Remove file
+                </button>}
+            </div>
+            <button type="submit" className="submit-button">Submit</button>
 
             {preview && (
-                <div
-                    className="preview-box"
-                    dangerouslySetInnerHTML={{__html: preview}}
-                />
+                <div className="form-group">
+                    <label>Comment preview</label>
+
+                    <div
+                        className="preview-box"
+                        dangerouslySetInnerHTML={{__html: preview}}
+                    />
+                </div>
             )}
 
             {errors.length > 0 && (

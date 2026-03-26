@@ -6,7 +6,7 @@ import {
     sortByEmail,
     sortByUserName
 } from "../../services/CommentService.js"
-import {SortButtons} from "../../components/SortButtons";
+import {SortDropdown} from "../../components/SortDropdown";
 import {SORT_FIELDS} from "../../Constants";
 import {getUserNameById} from "../../services/UserService";
 import CommentBlock from "./CommentBlock";
@@ -20,6 +20,7 @@ export const CommentBoard = ({comments, users, onReplyClick, onQuoteClick}) => {
     useEffect(() => {
         const map = buildCommentTrees(comments);
         const LifoMap = map.toReversed();
+        console.log("LifoMap", LifoMap);
         setRepliesByComment(LifoMap);
     }, [comments]);
 
@@ -44,10 +45,14 @@ export const CommentBoard = ({comments, users, onReplyClick, onQuoteClick}) => {
         if (page > 0) setPage(page - 1);
     };
 
-    const handleClickSortButtons = async (sortField) => {
-        let sortedMap = new Map(repliesByComment); // default
+    const handleClickSortDropdown = async (chosenSortKey) => {
+        let sortedMap = new Map();
+        console.log("sortedMap", sortByUserName(users, repliesByComment));
 
-        switch (sortField) {
+        switch (chosenSortKey) {
+            case SORT_FIELDS.DEFAULT:
+                sortedMap = sortByCreatedAt(repliesByComment);
+                break;
             case SORT_FIELDS.USER_NAME:
                 sortedMap = sortByUserName(users, repliesByComment);
                 break;
@@ -57,41 +62,53 @@ export const CommentBoard = ({comments, users, onReplyClick, onQuoteClick}) => {
             case SORT_FIELDS.CREATED_AT:
                 sortedMap = sortByCreatedAt(repliesByComment);
                 break;
-            case SORT_FIELDS.REVERSE:
-                sortedMap = reverseMap(repliesByComment);
-                break;
             default:
                 break;
         }
+
+        console.log("sortedMap", sortedMap);
         setRepliesByComment(sortedMap);
         setPage(0);
     };
 
     const renderComments = (commentsArray, level = 0) => {
-        return commentsArray.map(comment => (
-            <div key={comment.id}>
-                <CommentBlock
-                    comment={comment}
-                    userName={getUserNameById(users, comment.userId)}
-                    level={level}
-                    onReplyClick={onReplyClick}
-                    onQuoteClick={onQuoteClick}
-                />
-                {comment.children && comment.children.length > 0 && renderComments(comment.children, level + 1)}
-            </div>
-        ));
+        return commentsArray.map(comment => {
+            if (!comment || !comment.userId) return null;
+
+            return (
+                <div key={comment.id}>
+                    <CommentBlock
+                        comment={comment}
+                        userName={getUserNameById(users, comment.userId)}
+                        level={level}
+                        onReplyClick={onReplyClick}
+                        onQuoteClick={onQuoteClick}
+                    />
+                    {Array.isArray(comment.children) && comment.children.length > 0 &&
+                        renderComments(comment.children, level + 1)}
+                </div>
+            );
+        });
     };
 
+    const handleOrderChange = () => {
+        setRepliesByComment(reverseMap(repliesByComment));
+    }
+
     return (
-        <div style={{border: "1px solid #ccc", padding: "16px", maxWidth: "600px"}}>
-            <h2>Comments</h2>
-            < SortButtons
-                handleClickSortButtons={handleClickSortButtons}
-            />
+        <div className="comment-board">
+            <div className="comment-header">
+                <h2 className="comment-title">Comments</h2>
+
+                <SortDropdown
+                    onSortChange={handleClickSortDropdown}
+                    onOrderChange={handleOrderChange}
+                />
+            </div>
 
             {currentComments.length === 0 && <p>No comments yet.</p>}
 
-            <div>
+            <div className="comment-list">
                 {currentComments.length === 0 ? (
                     <p>No comments yet.</p>
                 ) : (
@@ -99,13 +116,15 @@ export const CommentBoard = ({comments, users, onReplyClick, onQuoteClick}) => {
                 )}
             </div>
 
-            <div style={{marginTop: "12px", display: "flex", justifyContent: "space-between"}}>
+            <div className="pagination">
                 <button onClick={handlePrev} disabled={page === 0}>
                     Prev
                 </button>
+
                 <span>
-          Page {page + 1} / {totalPages}
-        </span>
+                Page {page + 1} / {totalPages}
+            </span>
+
                 <button onClick={handleNext} disabled={page >= totalPages - 1}>
                     Next
                 </button>
