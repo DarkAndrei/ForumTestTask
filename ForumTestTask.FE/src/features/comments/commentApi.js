@@ -1,87 +1,89 @@
-import {BACKEND_API_URL, COMMENTS_ENDPOINT, REPLY_ENDPOINT} from "../../apiConfig.js"
-
+import {BACKEND_API_URL, COMMENTS_ENDPOINT, REPLY_ENDPOINT} from "../../apiConfig.js";
 
 export async function addComment(newComment, file) {
-    const formData = new FormData();
+    try {
+        const formData = new FormData();
+        formData.append("userId", newComment.userId);
+        formData.append("contentItems", JSON.stringify(newComment.contentItems));
+        if (file) formData.append("file", file);
 
-    formData.append("userId", newComment.userId);
-    formData.append("contentItems", JSON.stringify(newComment.contentItems));
+        const res = await fetch(`${BACKEND_API_URL}${COMMENTS_ENDPOINT}`, {
+            method: "POST",
+            body: formData,
+        });
 
-    if (file) {
-        formData.append("file", file);
+        if (!res.ok) {
+            const message = await res.text();
+            return {success: false, message};
+        }
+
+        const data = await res.json();
+        return {success: true, data};
+
+    } catch (error) {
+        console.error("addComment error:", error);
+        return {success: false, message: error.message};
     }
-
-    const response = await fetch(BACKEND_API_URL + COMMENTS_ENDPOINT, {
-        method: "POST",
-        body: formData
-    });
-
-    // handle backend error
-    if (!response.ok) {
-        const errorText = await response.text();
-        return {success: false, message: errorText};
-    }
-
-    const data = await response.json();
-    return {success: true, data};
 }
 
 export async function getComments() {
     try {
-        const response = await fetch(BACKEND_API_URL + COMMENTS_ENDPOINT, {
+        const res = await fetch(`${BACKEND_API_URL}${COMMENTS_ENDPOINT}`, {
             method: "GET",
             headers: {"Content-Type": "application/json"},
         });
 
-        if (!response.ok) new Error("Failed to fetch comments");
+        if (!res.ok) throw new Error("Failed to fetch comments");
 
-        return await response.json();
-
+        const data = await res.json();
+        return {success: true, data};
     } catch (error) {
-        console.error("Error fetching comments:", error);
-        return [];
+        console.error("getComments error:", error);
+        return {success: false, data: [], message: error.message};
     }
 }
 
 export async function addReplyComment(parentId, newReplyComment, file) {
-    const formData = new FormData();
+    try {
+        const formData = new FormData();
+        formData.append("parentId", parentId);
+        formData.append("userId", newReplyComment.userId);
+        formData.append("contentItems", JSON.stringify(newReplyComment.contentItems));
+        if (file) formData.append("file", file);
 
-    formData.append("parentId", parentId);
-    formData.append("userId", newReplyComment.userId);
-    formData.append("contentItems", JSON.stringify(newReplyComment.contentItems));
+        const res = await fetch(`${BACKEND_API_URL}${REPLY_ENDPOINT}`, {
+            method: "PUT",
+            body: formData,
+        });
 
-    if (file) {
-        formData.append("file", file);
+        if (!res.ok) {
+            const message = await res.text();
+            return {success: false, message};
+        }
+
+        const data = await res.json();
+        return {success: true, data};
+
+    } catch (error) {
+        console.error("addReplyComment error:", error);
+        return {success: false, message: error.message};
     }
-
-    const response = await fetch(BACKEND_API_URL + REPLY_ENDPOINT, {
-        method: "PUT",
-        body: formData
-    });
-
-    // handle backend error
-    if (!response.ok) {
-        const errorText = await response.text();
-        return {success: false, message: errorText};
-    }
-
-    const data = await response.json();
-    return {success: true, data};
 }
 
-export async function getCommentById(parentId) {
+export async function getCommentById(commentId) {
     try {
-        const response = await fetch(BACKEND_API_URL + COMMENTS_ENDPOINT + "/" + parentId, {
+        const res = await fetch(`${BACKEND_API_URL}${COMMENTS_ENDPOINT}/${commentId}`, {
             method: "GET",
             headers: {"Content-Type": "application/json"},
         });
 
-        if (!response.ok) new Error("Failed to fetch comments");
+        if (!res.ok) throw new Error("Failed to fetch comment");
 
-        return await response.json();
+        const data = await res.json();
+        return {success: true, data};
 
     } catch (error) {
-        console.error("Error fetching comments:", error);
-        return [];
+        console.error("getCommentById error:", error);
+        return {success: false, data: null, message: error.message};
     }
 }
