@@ -66,6 +66,8 @@ public class UsersController : ControllerBase
         return Ok(new { success = true, data = userDto });
     }
 
+
+
     //temporarily file for accepting a list of users from JSON
     [HttpPost("bulk")]
     public IActionResult AddUsers([FromBody] List<UserDto> usersDto)
