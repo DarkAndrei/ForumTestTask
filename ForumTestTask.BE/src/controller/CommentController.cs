@@ -10,12 +10,14 @@ public class CommentsController : ControllerBase
     private readonly AppDbContext _context;
     private readonly FileService _fileService;
     private readonly HtmlSanitizerService _htmlSanitizerService;
+    private readonly CommentService _commentService;
 
-    public CommentsController(AppDbContext context, FileService fileService, HtmlSanitizerService htmlSanitizerService)
+    public CommentsController(AppDbContext context, FileService fileService, HtmlSanitizerService htmlSanitizerService, CommentService commentService)
     {
         _context = context;
         _fileService = fileService;
         _htmlSanitizerService = htmlSanitizerService;
+        _commentService = commentService;
     }
 
     [RequestSizeLimit(100_000_000)]
@@ -60,7 +62,7 @@ public class CommentsController : ControllerBase
         {
             UserId = commentDto.UserId,
             ContentItems = serializedContent,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = _commentService.GetDateTime(),
             FilePath = filePath
         };
 
@@ -119,7 +121,7 @@ public class CommentsController : ControllerBase
         {
             UserId = commentDto.UserId,
             ContentItems = serializedContent,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = _commentService.GetDateTime(),
             FilePath = filePath
         };
 
@@ -202,7 +204,7 @@ public class CommentsController : ControllerBase
             {
                 UserId = commentDto.UserId,
                 ContentItems = serializedContent,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = _commentService.GetDateTime(),
                 FilePath = null
             };
 

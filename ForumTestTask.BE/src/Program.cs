@@ -34,6 +34,7 @@ builder.Services.Configure<FormOptions>(options =>
 
 builder.Services.AddScoped<FileService>();
 builder.Services.AddSingleton<HtmlSanitizerService>();
+builder.Services.AddScoped<CommentService>();
 
 var app = builder.Build();
 
@@ -59,8 +60,8 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/uploads"
 });
 
-app.UseStaticFiles();
 app.UseCors("CorsPolicy");
+app.UseStaticFiles();
 app.UseAuthorization();
 app.MapControllers();
 
