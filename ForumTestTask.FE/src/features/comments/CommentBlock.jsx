@@ -1,40 +1,85 @@
-import {BACKEND_URL} from "../../apiConfig";
 import 'lightbox2/dist/css/lightbox.min.css';
 import 'lightbox2/dist/js/lightbox-plus-jquery.min.js';
 import {useEffect, useState} from "react";
-import {convertToHtml, getDateString, renderContent} from "../../services/CommentService";
+import {convertToHtml, getDateString, getFileUrl, renderContent} from "../../services/commentService";
 
-export const CommentBlock = ({comment, userName, level, onReplyClick, onQuoteClick}) => {
+export const CommentBlock = ({
+                                 comment,
+                                 userName,
+                                 level,
+                                 onReplyClick,
+                                 onQuoteClick,
+                                 children
+                             }) => {
+    const AVATAR_URL = "https://i.pravatar.cc/40";
+
     const [htmlContent, setHtmlContent] = useState("");
+    const [showPreview, setShowPreview] = useState(false);
 
     useEffect(() => {
+        let isMounted = true;
+
         const loadContent = async () => {
             const rendered = await renderContent(comment.contentItems);
-            setHtmlContent(convertToHtml(rendered));
-        };
-        loadContent();
-    }, [comment]);
 
-    const fileUrl = comment.filePath ? `${BACKEND_URL}${comment.filePath}` : null;
-    
+            if (isMounted) {
+                setHtmlContent(convertToHtml(rendered));
+            }
+        };
+
+        loadContent();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [comment.contentItems]);
+
+    const fileUrl = getFileUrl(comment?.filePath);
+
+    const handleQuote = () => {
+        onQuoteClick({
+            id: comment.id,
+            contentItems: comment.contentItems
+        });
+    };
+
     return (
-        <div className="comment-card" style={{marginLeft: `${level * 20}px`}}>
+        <div
+            className="comment-card"
+            style={{marginLeft: `${level * 20}px`}}
+        >
             <div className="comment-header">
-                <img className="avatar" src="https://i.pravatar.cc/40" alt="User avatar"/>
+                <img className="avatar" src={AVATAR_URL} alt="User avatar"/>
                 <span className="username">{userName}</span>
                 <span className="comment-date">{getDateString(comment.createdAt)}</span>
             </div>
 
             {fileUrl && (
-                <div className="comment-file" style={{margin: "5px 0"}}>
-                    {fileUrl.endsWith(".txt") ? (
-                        <a href={fileUrl} target="_blank" rel="noopener noreferrer">Open file</a>
+                <div className="comment-file">
+                    {fileUrl?.toLowerCase().endsWith(".txt") ? (
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => setShowPreview(prev => !prev)}
+                                className="txt-file-link"
+                            >
+                                {showPreview ? "Hide file" : "Open File"}
+                            </button>
+
+                            {showPreview && (
+                                <iframe
+                                    src={fileUrl}
+                                    title="txt preview"
+                                    className="txt-iframe"
+                                />
+                            )}
+                        </>
                     ) : (
                         <a href={fileUrl} data-lightbox={`comment-${comment.id}`}>
                             <img
                                 src={fileUrl}
                                 alt="attachment"
-                                style={{maxWidth: "100px", maxHeight: "100px", cursor: "pointer", borderRadius: "4px"}}
+                                className="comment-image"
                             />
                         </a>
                     )}
@@ -46,10 +91,20 @@ export const CommentBlock = ({comment, userName, level, onReplyClick, onQuoteCli
             </div>
 
             <div className="comment-button">
-                <button onClick={() => onQuoteClick({commentId: comment.id, quoteText: comment.contentItems})}>Quote
+                <button
+                    type="button"
+                    onClick={() => handleQuote()}
+                >
+                    Quote
                 </button>
                 <button onClick={() => onReplyClick(comment.id)}>Reply</button>
             </div>
+
+            {children && (
+                <div className="comment-children">
+                    {children}
+                </div>
+            )}
         </div>
     );
 };
