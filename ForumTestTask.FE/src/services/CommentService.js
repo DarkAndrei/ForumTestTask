@@ -1,26 +1,27 @@
 import DOMPurify from "dompurify";
 import {EXTRA_HTML_ATTR, HTML_ATTR, HTML_TAGS} from "../Constants";
 import {getCommentById} from "../features/comments/commentApi";
+import {BACKEND_URL} from "../apiConfig";
 
-export const buildCommentTrees = (allComments) => {
-    const itemsById = new Map();
-    allComments.forEach(c => itemsById.set(c.id, c));
+export const buildCommentTrees = (comments) => {
+    const commentsById = new Map();
 
-    // Identify top-level comments: comments that are not referenced in any replyIds
+    comments.forEach(c => commentsById.set(c.id, c));
+
     const replyIdsSet = new Set();
-    allComments.forEach(c => {
+
+    comments.forEach(c => {
         (c.replyIds || []).forEach(id => replyIdsSet.add(id));
     });
 
-    const topLevelComments = allComments.filter(c => !replyIdsSet.has(c.id));
+    const topLevelComments = comments.filter(c => !replyIdsSet.has(c.id));
 
-    // Build tree for each top-level comment
     const buildTree = (comment) => {
         const children = (comment.replyIds || [])
             .slice()
             .reverse()
             .map(id => {
-                const child = itemsById.get(id);
+                const child = commentsById.get(id);
                 if (!child) return null;
                 return buildTree(child);
             }).filter(Boolean); // remove nulls
@@ -31,54 +32,42 @@ export const buildCommentTrees = (allComments) => {
     return topLevelComments.map(buildTree);
 };
 
-export const sortByUserName = (users, mapComments) => {
-    const sortedUsers = Object.values(users).sort((a, b) =>
-        a.userName.localeCompare(b.userName)
+
+export const sortByUserName = (comments, users) => {
+    const userMap = new Map(
+        (Array.isArray(users) ? users : Object.values(users))
+            .map(user => [user.id, user.userName])
     );
 
-    const sortedMapComments = new Map();
+    return [...comments].sort((a, b) => {
+        const nameA = userMap.get(a.userId) || '';
+        const nameB = userMap.get(b.userId) || '';
+        return nameA.localeCompare(nameB);
+    });
+};
 
-    for (const user of sortedUsers) {
-        for (const [commentId, commentData] of mapComments.entries()) {
-            if (commentData.userId === user.id) {
-                sortedMapComments.set(commentId, commentData);
-            }
-        }
-    }
-
-    return sortedMapComments;
-}
-
-export const sortByEmail = (users, mapComments) => {
-    const sortedUsers = Object.values(users).sort((a, b) =>
-        a.email.localeCompare(b.email)
+export const sortByEmail = (comments, users) => {
+    const userMap = new Map(
+        (Array.isArray(users) ? users : Object.values(users))
+            .map(user => [user.id, user.email])
     );
 
-    const sortedMapComments = new Map();
+    return [...comments].sort((a, b) => {
+        const emailA = userMap.get(a.userId) || '';
+        const emailB = userMap.get(b.userId) || '';
+        return emailA.localeCompare(emailB);
+    });
+};
 
-    for (const user of sortedUsers) {
-        for (const [commentId, commentData] of mapComments.entries()) {
-            if (commentData.userId === user.id) {
-                sortedMapComments.set(commentId, commentData);
-            }
-        }
-    }
+export const sortByCreatedAt = (comments) => {
+    return [...comments].sort((a, b) => {
+        return (a.createdAt || '').localeCompare(b.createdAt || '');
+    });
+};
 
-    return sortedMapComments;
-}
-
-export const sortByCreatedAt = (mapComments) => {
-    return new Map(
-        [...mapComments.entries()].sort(([, a], [, b]) =>
-            a.createdAt.localeCompare(b.createdAt)
-        )
-    );
-}
-
-export const reverseMap = (mapComments) => {
-    return new Map(
-        [...mapComments.entries()].reverse());
-}
+export const reverseComments = (comments) => {
+    return [...comments].reverse();
+};
 
 export const convertToHtml = (input) => {
     if (!input) return "";
@@ -207,12 +196,12 @@ export const renderContent = async (itemsInput, file) => {
         if (type === "quote" && item.id) {
             try {
                 const resp = await getCommentById(item.id);
-                if (!resp?.success || !resp?.data) {
+                if (!resp?.success || !resp?.data.data) {
                     parts.push(`<div class="quote-block">Quote not found</div>`);
                     continue;
                 }
 
-                const quoteItems = resp.data.contentItems;
+                const quoteItems = resp.data.data.contentItems;
                 const quoteText = getFirstTextValue(
                     Array.isArray(quoteItems) ? quoteItems : JSON.parse(quoteItems)
                 );
@@ -241,6 +230,16 @@ export const getDateString = (date) => {
     return `${year}-${month}-${day} в ${hours}:${minutes}:${seconds}`;
 };
 
+export const getFileUrl = (filePath) => {
+    if (!filePath) return null;
+
+    if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+        return filePath;
+    }
+
+    return `${BACKEND_URL}${filePath}`;
+}
+
 const getFirstTextValue = (items) => {
     if (!Array.isArray(items)) return "[Quote]";
 
@@ -248,5 +247,3 @@ const getFirstTextValue = (items) => {
 
     return firstValid?.value?.replace(/\n/g, " ") || "[Quote]";
 };
-
-
