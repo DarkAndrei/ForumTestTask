@@ -1,30 +1,30 @@
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
-using SixLabors.ImageSharp.Formats;
 
 public class FileService
 {
-    private const int MaxTxtSize = 102400; // 100 KB
     private const int TargetWidth = 320;
     private const int TargetHeight = 240;
-
-    private readonly string[] _allowedImageExtensions = { ".jpg", ".png", ".gif" };
-    private readonly string[] _allowedTextExtensions = { ".txt" };
 
     private readonly string _uploadFolder = "wwwroot/uploads/comments/";
     private readonly string _fileFolder = "/uploads/comments/";
 
+    private readonly FileValidator _validationService;
+
+    public FileService(FileValidator FileValidator)
+    {
+        _validationService = FileValidator;
+    }
+
     public async Task<string?> SaveAsync(IFormFile file)
     {
-        if (file == null || file.Length == 0)
+        if (file == null)
             return null;
 
-        var extension = Path.GetExtension(file.FileName).ToLower();
-
-        if (file.ContentType.StartsWith("image/") && _allowedImageExtensions.Contains(extension))
+        if (await _validationService.IsValidImageAsync(file))
             return await SaveImage(file);
 
-        if (file.ContentType.StartsWith("text/") && _allowedTextExtensions.Contains(extension))
+        if (await _validationService.IsValidTextAsync(file))
             return await SaveTextFile(file);
 
         return null;
@@ -35,31 +35,21 @@ public class FileService
         var fileName = GenerateUniqueFileName(file.FileName);
         var path = Path.Combine(_uploadFolder, fileName);
 
-        try
-        {
-            using var image = await Image.LoadAsync(file.OpenReadStream());
+        using var image = await Image.LoadAsync(file.OpenReadStream());
 
-            image.Mutate(x => x.Resize(new ResizeOptions
-            {
-                Mode = ResizeMode.Max,
-                Size = new Size(TargetWidth, TargetHeight)
-            }));
-
-            await image.SaveAsync(path);
-        }
-        catch
+        image.Mutate(x => x.Resize(new ResizeOptions
         {
-            return null;
-        }
+            Mode = ResizeMode.Max,
+            Size = new Size(TargetWidth, TargetHeight)
+        }));
+
+        await image.SaveAsync(path);
 
         return _fileFolder + fileName;
     }
 
     private async Task<string?> SaveTextFile(IFormFile file)
     {
-        if (file.Length > MaxTxtSize)
-            return null;
-
         var fileName = GenerateUniqueFileName(file.FileName);
         var path = Path.Combine(_uploadFolder, fileName);
 
@@ -72,6 +62,6 @@ public class FileService
     private string GenerateUniqueFileName(string originalFileName)
     {
         var extension = Path.GetExtension(originalFileName);
-        return Guid.NewGuid().ToString() + extension;
+        return Guid.NewGuid() + extension;
     }
 }
