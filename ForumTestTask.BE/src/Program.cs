@@ -4,6 +4,11 @@ using Microsoft.Extensions.FileProviders;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>();
+var allowCredentials = builder.Configuration
+    .GetValue<bool>("Cors:AllowCredentials");
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -19,19 +24,30 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         sqlOptions => sqlOptions.EnableRetryOnFailure()
     ));
 
-builder.Services.AddCors(o => o.AddPolicy("CorsPolicy", policy =>
-    policy
-      .WithOrigins("https://localhost:3000", "https://localhost", "https://localhost:443", "https://localhost:5000")
-      .AllowAnyMethod()
-      .AllowAnyHeader()
-      .AllowCredentials()
-));
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("CorsPolicy", policy =>
+    {
+        if (allowedOrigins == null || allowedOrigins.Length == 0)
+            throw new Exception("CORS AllowedOrigins is not configured");
+
+        policy.WithOrigins(allowedOrigins)
+              .WithMethods("GET", "POST", "PUT", "DELETE")
+              .WithHeaders("Content-Type", "Authorization");
+
+        if (allowCredentials)
+        {
+            policy.AllowCredentials();
+        }
+    });
+});
 
 builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 100_000_000;
 });
 
+builder.Services.AddScoped<FileValidator>();
 builder.Services.AddScoped<FileService>();
 builder.Services.AddSingleton<HtmlSanitizerService>();
 builder.Services.AddScoped<CommentService>();
@@ -63,6 +79,6 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseCors("CorsPolicy");
 app.UseStaticFiles();
 app.UseAuthorization();
-app.MapControllers();
+app.MapControllers().RequireCors("CorsPolicy");
 
 app.Run();
