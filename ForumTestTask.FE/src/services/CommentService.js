@@ -1,7 +1,6 @@
 import DOMPurify from "dompurify";
-import {EXTRA_HTML_ATTR, HTML_ATTR, HTML_TAGS} from "../Constants";
-import {getCommentById} from "../features/comments/commentApi";
-import {BACKEND_URL} from "../apiConfig";
+import { EXTRA_HTML_ATTR, HTML_ATTR, HTML_TAGS } from "../Constants";
+import { getCommentById } from "../features/comments/commentApi";
 
 export const buildCommentTrees = (comments) => {
     const commentsById = new Map();
@@ -24,14 +23,13 @@ export const buildCommentTrees = (comments) => {
                 const child = commentsById.get(id);
                 if (!child) return null;
                 return buildTree(child);
-            }).filter(Boolean); // remove nulls
+            }).filter(Boolean);
 
-        return {...comment, children};
+        return { ...comment, children };
     };
 
     return topLevelComments.map(buildTree);
 };
-
 
 export const sortByUserName = (comments, users) => {
     const userMap = new Map(
@@ -90,7 +88,7 @@ export const sanitizeText = (input) => {
     return DOMPurify.sanitize(input, {
         ALLOWED_TAGS: [
             HTML_TAGS.CODE,
-            HTML_TAGS.ANCHOR,
+            HTML_TAGS.ANCHOR, 
             HTML_TAGS.ITALIC,
             HTML_TAGS.STRONG
         ],
@@ -135,19 +133,19 @@ export const parseEditorContent = (html) => {
             node.hasAttribute("data-quote-id")
         ) {
             const id = Number(node.getAttribute("data-quote-id"));
-            result.push({type: "quote", id});
+            result.push({ type: "quote", id });
             return;
         }
 
         if (node.nodeName === "BR") {
-            result.push({type: "text", value: "<br>"});
+            result.push({ type: "text", value: "<br>" });
             return;
         }
 
         if (node.nodeType === Node.TEXT_NODE) {
             const text = node.textContent.replace(/\u00a0/g, " ");
             if (text.trim()) {
-                result.push({type: "text", value: text});
+                result.push({ type: "text", value: text });
             }
             return;
         }
@@ -230,16 +228,6 @@ export const getDateString = (date) => {
     return `${year}-${month}-${day} в ${hours}:${minutes}:${seconds}`;
 };
 
-export const getFileUrl = (filePath) => {
-    if (!filePath) return null;
-
-    if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
-        return filePath;
-    }
-
-    return `${BACKEND_URL}${filePath}`;
-}
-
 const getFirstTextValue = (items) => {
     if (!Array.isArray(items)) return "[Quote]";
 
@@ -247,3 +235,4 @@ const getFirstTextValue = (items) => {
 
     return firstValid?.value?.replace(/\n/g, " ") || "[Quote]";
 };
+
