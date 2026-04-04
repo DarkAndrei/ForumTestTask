@@ -1,15 +1,15 @@
-import {HtmlTagButtons} from "../../components/HtmlTagButtons";
-import {useCommentFormState} from "./hooks/useCommentFormState";
-import {useCommentFormEditor} from "./hooks/useCommentFormEditor";
+import { HtmlTagButtons } from "../../components/HtmlTagButtons";
+import { useCommentFormState } from "./hooks/useCommentFormState";
+import { useCommentFormEditor } from "./hooks/useCommentFormEditor";
 
 
 export const CommentForm = ({
-                                parentCommentId = 0,
-                                setParentCommentId,
-                                quote,
-                                setQuote,
-                                updateData
-                            }) => {
+    parentCommentId = 0,
+    setParentCommentId,
+    quote,
+    setQuote,
+    updateData
+}) => {
     const form = useCommentFormState({
         parentCommentId,
         updateData,
@@ -22,11 +22,12 @@ export const CommentForm = ({
         updatePreview,
         handleClickTagButton,
         clearEditor
-    } = useCommentFormEditor({quote, setQuote, file: form.file});
+    } = useCommentFormEditor({ quote, setQuote, file: form.file });
 
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        form.setMessages([]);
 
         if (form.isSubmitting) return;
         if (!editableRef.current) return;
@@ -46,11 +47,7 @@ export const CommentForm = ({
         } finally {
             form.setIsSubmitting(false);
         }
-    };
-
-    const handleClickCancelReplyButton = () => {
-        setParentCommentId?.(0);
-    };
+    }
 
     return (
         <form onSubmit={handleSubmit} className="comment-form">
@@ -86,7 +83,7 @@ export const CommentForm = ({
 
             <div>
                 <label>Comment</label>
-                <HtmlTagButtons handleClickTagButton={handleClickTagButton}/>
+                <HtmlTagButtons handleClickTagButton={handleClickTagButton} />
 
                 <div
                     ref={editableRef}
@@ -97,7 +94,7 @@ export const CommentForm = ({
                 {parentCommentId !== 0 && (
                     <div className="reply-box">
                         Reply to comment with ID: {parentCommentId}
-                        <button type="button" className="reply-close" onClick={handleClickCancelReplyButton}>
+                        <button type="button" className="reply-close" onClick={form.handleCancelReply}>
                             ×
                         </button>
                     </div>
@@ -109,14 +106,14 @@ export const CommentForm = ({
                 <input
                     type="file"
                     ref={form.fileInputRef}
-                    onChange={(e) => form.handleAttachFileCLick(e)}
+                    onChange={(e) => form.handleAttachFile(e)}
                 />
                 {form.file &&
                     <div className="file-info">
                         <button
                             className="remove-file-button"
                             type="button"
-                            onClick={form.handleClickRemoveFileButton}
+                            onClick={form.handleRemoveFile}
                         >
                             Remove file
                         </button>
@@ -137,7 +134,7 @@ export const CommentForm = ({
 
                     <div
                         className="preview-box"
-                        dangerouslySetInnerHTML={{__html: preview}}
+                        dangerouslySetInnerHTML={{ __html: preview }}
                     />
                 </div>
             )}

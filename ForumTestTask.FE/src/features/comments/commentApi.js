@@ -1,4 +1,4 @@
-import {BACKEND_API_URL, COMMENTS_ENDPOINT, REPLY_ENDPOINT} from "../../apiConfig.js";
+import { COMMENTS_ENDPOINT, REPLY_ENDPOINT } from "../../apiConfig.js";
 
 const handleResponse = async (response) => {
     if (!response.ok) {
@@ -45,7 +45,7 @@ export async function addComment(newComment, file) {
         formData.append("contentItems", JSON.stringify(newComment.contentItems));
         if (file) formData.append("file", file);
 
-        const res = await fetch(`${BACKEND_API_URL}${COMMENTS_ENDPOINT}`, {
+        const res = await fetch(COMMENTS_ENDPOINT, {
             method: "POST",
             body: formData,
         });
@@ -69,7 +69,7 @@ export async function addReplyComment(parentId, newReplyComment, file) {
         formData.append("contentItems", JSON.stringify(newReplyComment.contentItems));
         if (file) formData.append("file", file);
 
-        const res = await fetch(`${BACKEND_API_URL}${REPLY_ENDPOINT}`, {
+        const res = await fetch(REPLY_ENDPOINT, {
             method: "PUT",
             body: formData,
         });
@@ -87,9 +87,9 @@ export async function addReplyComment(parentId, newReplyComment, file) {
 
 export async function getComments() {
     try {
-        const res = await fetch(`${BACKEND_API_URL}${COMMENTS_ENDPOINT}`, {
+        const res = await fetch(COMMENTS_ENDPOINT, {
             method: "GET",
-            headers: {"Content-Type": "application/json"},
+            headers: { "Content-Type": "application/json" },
         });
 
         return await handleResponse(res);
@@ -105,9 +105,9 @@ export async function getComments() {
 
 export async function getCommentById(commentId) {
     try {
-        const res = await fetch(`${BACKEND_API_URL}${COMMENTS_ENDPOINT}/${commentId}`, {
+        const res = await fetch(COMMENTS_ENDPOINT + `/${commentId}`, {
             method: "GET",
-            headers: {"Content-Type": "application/json"},
+            headers: { "Content-Type": "application/json" },
         });
 
         return await handleResponse(res);
