@@ -1,15 +1,16 @@
-import {useRef, useState} from "react";
-import {parseEditorContent, sanitizeContentItems} from "../../../services/commentService";
-import {addUser} from "../../users/userApi";
-import {addComment, addReplyComment} from "../commentApi";
-import {parseApiErrors} from "../../parseApiErrors";
-import {CommentDto} from "../models/CommentDto";
+import { useRef, useState } from "react";
+import { parseEditorContent, sanitizeContentItems } from "../../../services/commentService";
+import { addUser } from "../../users/userApi";
+import { addComment, addReplyComment } from "../commentApi";
+import { parseApiErrors } from "../../parseApiErrors";
+import { CommentDto } from "../models/CommentDto";
+import { resizeImage, validateFile } from "../../../services/fileService";
 
 export const useCommentFormState = ({
-                                        parentCommentId,
-                                        setParentCommentId,
-                                        updateData,
-                                    }) => {
+    parentCommentId,
+    setParentCommentId,
+    updateData,
+}) => {
     const [userName, setUserName] = useState("");
     const [email, setEmail] = useState("");
     const [homePage, setHomePage] = useState("");
@@ -18,7 +19,7 @@ export const useCommentFormState = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const fileInputRef = useRef(null);
 
-    const validateForm = ({userName, email, homePage, html}) => {
+    const validateForm = ({ userName, email, homePage, html }) => {
         const errors = [];
 
         if (!userName.trim()) errors.push("Enter your name");
@@ -54,14 +55,14 @@ export const useCommentFormState = ({
 
     const validateAndSubmit = async (html, file) => {
         setMessages([]);
-        const validationErrors = validateForm({userName, email, homePage, html});
+        const validationErrors = validateForm({ userName, email, homePage, html });
 
         if (validationErrors.length > 0) {
             return setMessages(validationErrors);
         }
 
         try {
-            const userResult = await addUser({userName, email, homePage});
+            const userResult = await addUser({ userName, email, homePage });
             const userId = userResult.data.data.id;
 
             const contentItems = parseEditorContent(html);
@@ -95,17 +96,41 @@ export const useCommentFormState = ({
         }
     }
 
-    const handleAttachFileCLick = (e) => {
-        const f = e.target.files[0];
-        setFile(f);
+    const handleCancelReply = () => {
+        setParentCommentId?.(0);
+    };
+
+    const handleAttachFile = async (e) => {
+        const file = e.target.files[0];
+        setMessages([]);
+
+        if (!file) return;
+
+        const isFileValid = await validateFile(file);
+
+        if (!isFileValid) {
+            fileInputRef.current.value = "";
+            setMessages(prev => [...prev, "Invalid file"]);
+            return;
+        }
+
+        let finaleResult = file;
+
+        if (file.type.startsWith("image/")) {
+            finaleResult = await resizeImage(finaleResult);
+        }
+
+        setFile(finaleResult);
+
     }
 
-    const handleClickRemoveFileButton = () => {
+    const handleRemoveFile = () => {
         if (fileInputRef.current) {
             setFile(null);
             fileInputRef.current.value = "";
         }
-    };
+    }
+
 
     const resetForm = () => {
         setUserName("");
@@ -114,6 +139,7 @@ export const useCommentFormState = ({
         setFile(null);
         setParentCommentId?.(0);
         setFile(null);
+        fileInputRef.current.value = "";
     }
 
     const resetMessagesAfterDelay = (delay = 5000) => {
@@ -132,7 +158,8 @@ export const useCommentFormState = ({
         resetForm,
         resetMessagesAfterDelay,
         isSubmitting, setIsSubmitting,
-        handleAttachFileCLick, handleClickRemoveFileButton,
+        handleAttachFile, handleRemoveFile,
         fileInputRef,
+        handleCancelReply,
     }
 }
