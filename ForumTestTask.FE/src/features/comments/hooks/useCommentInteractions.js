@@ -1,8 +1,8 @@
-import {useCallback, useState} from "react";
-import {parseQuote} from "../../../services/utilityService";
+import { useCallback, useState } from "react";
+import { parseQuote } from "../../../services/utilityService";
 
 export const useCommentInteractions = () => {
-    const [quote, setQuote] = useState({id: 0, contentItems: []});
+    const [quote, setQuote] = useState({ id: 0, contentItems: [] });
     const [parentCommentId, setParentCommentId] = useState(0);
 
     const handleReplyClick = useCallback((commentId) => {
@@ -16,11 +16,6 @@ export const useCommentInteractions = () => {
             contentItems: contentItems
         });
     }, []);
-
-    // const resetInteractions = useCallback(() => {
-    //     setParentCommentId(0);
-    //     setQuote({ id: 0, contentItems: [] });
-    // }, []);
 
     return {
         quote,
