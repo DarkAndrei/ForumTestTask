@@ -20,5 +20,4 @@ RUN apt-get update \
 
 RUN mkdir -p /app/wwwroot/uploads/comments
 
-# use dockerize to wait for SQL Server
-ENTRYPOINT ["dockerize", "-wait", "tcp://db:5432", "-timeout", "60s", "dotnet", "ForumTestTask.BE.dll"]
+ENTRYPOINT ["dotnet", "ForumTestTask.BE.dll"]
