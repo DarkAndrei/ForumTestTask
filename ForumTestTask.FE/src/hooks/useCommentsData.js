@@ -1,30 +1,37 @@
 import {useCallback, useEffect, useState} from "react";
-import {getComments} from "../features/comments/commentApi";
-import {getUsers} from "../features/users/userApi";
+import {getCommentsPage} from "../features/comments/commentApi";
 
 export const useCommentsData = () => {
-    const [comments, setComments] = useState([]);
-    const [users, setUsers] = useState({});
+    const [pagination, setPagination] = useState({
+        page: 1,
+        pageSize: 25,
+        totalItems: 0,
+        totalPages: 0,
+    });
+    const [commentsPage, setCommentsPage] = useState([]);
+    const [sortType, setSortType] = useState("default");
 
-    const updateData = useCallback(async () => {
-        const usersResponse = await getUsers();
-        const commentsResponse = await getComments();
+    const updateComments = useCallback(async (nextPage) => {
+        const pageToLoad = nextPage || pagination.page;
 
-        if (!usersResponse.success) {
-            return console.log(usersResponse.message);
+        const commentResponse = await getCommentsPage(pageToLoad, sortType);
+
+        if (!commentResponse.success) {
+            return console.log(commentResponse.message);
         }
-
-        if (!commentsResponse.success) {
-            return console.log(commentsResponse.message);
-        }
-
-        setUsers(usersResponse.data.data);
-        setComments(commentsResponse.data.data);
-    }, []);
+        
+        setCommentsPage(commentResponse.data.comments);
+        setPagination(commentResponse.data.pagination);
+    }, [sortType, pagination]);
 
     useEffect(() => {
-        updateData();
-    }, [])
+        updateComments();
+    }, [sortType, updateComments]);
 
-    return {comments, users, updateData}
+    return {
+        commentsPage, setCommentsPage,
+        updateComments,
+        pagination, setPagination,
+        setSortType
+    };
 }

@@ -2,71 +2,6 @@ import DOMPurify from "dompurify";
 import { EXTRA_HTML_ATTR, HTML_ATTR, HTML_TAGS } from "../Constants";
 import { getCommentById } from "../features/comments/commentApi";
 
-export const buildCommentTrees = (comments) => {
-    const commentsById = new Map();
-
-    comments.forEach(c => commentsById.set(c.id, c));
-
-    const replyIdsSet = new Set();
-
-    comments.forEach(c => {
-        (c.replyIds || []).forEach(id => replyIdsSet.add(id));
-    });
-
-    const topLevelComments = comments.filter(c => !replyIdsSet.has(c.id));
-
-    const buildTree = (comment) => {
-        const children = (comment.replyIds || [])
-            .slice()
-            .reverse()
-            .map(id => {
-                const child = commentsById.get(id);
-                if (!child) return null;
-                return buildTree(child);
-            }).filter(Boolean);
-
-        return { ...comment, children };
-    };
-
-    return topLevelComments.map(buildTree);
-};
-
-export const sortByUserName = (comments, users) => {
-    const userMap = new Map(
-        (Array.isArray(users) ? users : Object.values(users))
-            .map(user => [user.id, user.userName])
-    );
-
-    return [...comments].sort((a, b) => {
-        const nameA = userMap.get(a.userId) || '';
-        const nameB = userMap.get(b.userId) || '';
-        return nameA.localeCompare(nameB);
-    });
-};
-
-export const sortByEmail = (comments, users) => {
-    const userMap = new Map(
-        (Array.isArray(users) ? users : Object.values(users))
-            .map(user => [user.id, user.email])
-    );
-
-    return [...comments].sort((a, b) => {
-        const emailA = userMap.get(a.userId) || '';
-        const emailB = userMap.get(b.userId) || '';
-        return emailA.localeCompare(emailB);
-    });
-};
-
-export const sortByCreatedAt = (comments) => {
-    return [...comments].sort((a, b) => {
-        return (a.createdAt || '').localeCompare(b.createdAt || '');
-    });
-};
-
-export const reverseComments = (comments) => {
-    return [...comments].reverse();
-};
-
 export const convertToHtml = (input) => {
     if (!input) return "";
 
@@ -88,14 +23,13 @@ export const sanitizeText = (input) => {
     return DOMPurify.sanitize(input, {
         ALLOWED_TAGS: [
             HTML_TAGS.CODE,
-            HTML_TAGS.ANCHOR, 
+            HTML_TAGS.ANCHOR,
             HTML_TAGS.ITALIC,
             HTML_TAGS.STRONG
         ],
         ALLOWED_ATTR: [
             HTML_ATTR.HREF,
-            HTML_ATTR.TITLE
-            ,
+            HTML_ATTR.TITLE,
             EXTRA_HTML_ATTR.DATA_QUOTE_ID
         ],
     });

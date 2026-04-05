@@ -1,11 +1,18 @@
 import './App.css';
 import CommentForm from "./features/comments/CommentForm";
 import CommentBoard from "./features/comments/CommentBoard";
-import {useCommentsData} from "./hooks/useCommentsData";
-import {useCommentInteractions} from "./features/comments/hooks/useCommentInteractions";
+import { useCommentsData } from "./hooks/useCommentsData";
+import { useCommentInteractions } from "./features/comments/hooks/useCommentInteractions";
+import { useUserData } from "./hooks/useUserData";
 
 export const App = () => {
-    const {comments, users, updateData} = useCommentsData();
+    const { users } = useUserData();
+    const {
+        commentsPage, setCommentsPage,
+        pagination, setPagination,
+        updateComments,
+        setSortType
+    } = useCommentsData();
     const {
         quote,
         setQuote,
@@ -24,15 +31,20 @@ export const App = () => {
                         setParentCommentId={setParentCommentId}
                         quote={quote}
                         setQuote={setQuote}
-                        updateData={updateData}
+                        updateComments={updateComments}
                     />
                 </div>
 
                 <CommentBoard
-                    comments={comments}
+                    commentsPage={commentsPage}
+                    setCommentsPage={setCommentsPage}
                     users={users}
                     onReplyClick={handleReplyClick}
                     onQuoteClick={handleQuoteClick}
+                    pagination={pagination}
+                    setPagination={setPagination}
+                    setSortType={setSortType}
+                    updateComments={updateComments}
                 />
             </header>
         </div>
