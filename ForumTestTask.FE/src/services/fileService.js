@@ -1,4 +1,4 @@
-import { API_BASE } from "../apiConfig";
+import {API_BASE} from "../apiConfig";
 
 export const getFileUrl = (filePath) => {
     if (!filePath) return null;
@@ -21,15 +21,10 @@ export const validateFile = async (file) => {
 
     const extension = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
 
-    console.log("allowedImageTypes.includes(file.type)", allowedImageTypes.includes(file.type));
-
     if (allowedImageTypes.includes(file.type)) {
-        console.log("Validating image dimensions...");
         if (file.size === 0 || file.size > maxImageSize) {
             return false;
         }
-
-        console.log("Checking image dimensions...");
 
         const isValidDimensions = await new Promise((resolve) => {
             const img = new Image();

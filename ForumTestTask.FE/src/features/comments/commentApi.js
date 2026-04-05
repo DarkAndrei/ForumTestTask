@@ -120,3 +120,24 @@ export async function getCommentById(commentId) {
         };
     }
 }
+
+export async function getCommentsPage(page, sortType) {
+    try {
+        const res = await fetch(
+            `${COMMENTS_ENDPOINT}?page=${page}&sortType=${sortType}`,
+            {
+                method: "GET",
+                headers: { "Content-Type": "application/json" },
+            }
+        );
+
+        return await handleResponse(res);
+    } catch (error) {
+        console.error("getCommentsPage error:", error);
+        return {
+            success: false,
+            error: error.message || "Failed to fetch comments",
+            data: null,
+        };
+    }
+}

@@ -8,11 +8,11 @@ export const CommentForm = ({
     setParentCommentId,
     quote,
     setQuote,
-    updateData
+    updateComments
 }) => {
     const form = useCommentFormState({
         parentCommentId,
-        updateData,
+        updateComments,
         setParentCommentId,
     });
 
@@ -23,7 +23,6 @@ export const CommentForm = ({
         handleClickTagButton,
         clearEditor
     } = useCommentFormEditor({ quote, setQuote, file: form.file });
-
 
     const handleSubmit = async (e) => {
         e.preventDefault();

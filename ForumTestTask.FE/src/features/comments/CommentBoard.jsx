@@ -1,29 +1,36 @@
-import {SortDropdown} from "../../components/SortDropdown";
-import {getUserNameByIdAndUsers} from "../../services/userService";
+import { SortDropdown } from "../../components/SortDropdown";
 import CommentBlock from "./CommentBlock";
-import {useCommentBoardState} from "./hooks/useCommentBoardState";
-import {useCallback} from "react";
+import { useCommentBoardState } from "./hooks/useCommentBoardState";
+import { useCallback } from "react";
 import PaginationBlock from "../../components/PaginationBlock";
 
-export const CommentBoard = ({comments, users, onReplyClick, onQuoteClick}) => {
+export const CommentBoard = ({
+    commentsPage, setCommentsPage,
+    users,
+    onReplyClick,
+    onQuoteClick,
+    setSortType,
+    pagination, setPagination,
+    updateComments,
+}) => {
     const {
         handleSortChange,
         handleOrderChange,
         handleNext,
         handlePrev,
-        currentComments,
-        page,
-        totalPages,
-    } = useCommentBoardState({comments, users});
-
-    const renderComments = useCallback((commentsArray, level = 0) => {
-        return commentsArray
-            .filter(c => c?.id && c?.userId)
+    } = useCommentBoardState({
+        setSortType,
+        setPagination,
+        setCommentsPage,
+        updateComments
+    });
+    const renderComments = useCallback((comments, level = 0) => {
+        return comments
+            .filter(c => c?.id)
             .map((comment) => (
                 <CommentBlock
                     key={comment.id}
                     comment={comment}
-                    userName={getUserNameByIdAndUsers(users, comment.userId)}
                     level={level}
                     onReplyClick={onReplyClick}
                     onQuoteClick={onQuoteClick}
@@ -46,27 +53,25 @@ export const CommentBoard = ({comments, users, onReplyClick, onQuoteClick}) => {
                 />
             </div>
 
-            {totalPages > 1 && (
+            {pagination.totalPages > 1 && (
                 <PaginationBlock
-                    totalPages={totalPages}
-                    page={page}
+                    pagination={pagination}
                     handlePrev={handlePrev}
                     handleNext={handleNext}
                 />
             )}
 
             <div className="comment-list">
-                {currentComments.length === 0 ? (
+                {commentsPage.length === 0 ? (
                     <p>No comments yet.</p>
                 ) : (
-                    renderComments(currentComments)
+                    renderComments(commentsPage)
                 )}
             </div>
 
-            {totalPages > 1 && (
+            {pagination.totalPages > 1 && (
                 <PaginationBlock
-                    totalPages={totalPages}
-                    page={page}
+                    pagination={pagination}
                     handlePrev={handlePrev}
                     handleNext={handleNext}
                 />

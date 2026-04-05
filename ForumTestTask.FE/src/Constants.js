@@ -3,7 +3,6 @@ export const SORT_FIELDS = {
     USER_NAME: "Name",
     EMAIL: "Email",
     CREATED_AT: "Date",
-
 }
 
 export const HTML_TAGS = {

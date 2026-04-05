@@ -1,17 +1,16 @@
 import 'lightbox2/dist/css/lightbox.min.css';
 import 'lightbox2/dist/js/lightbox-plus-jquery.min.js';
-import { useEffect, useState } from "react";
-import { convertToHtml, getDateString, renderContent } from "../../services/commentService";
-import { getFileUrl } from "../../services/fileService";
+import {useEffect, useState} from "react";
+import {convertToHtml, getDateString, renderContent} from "../../services/commentService";
+import {getFileUrl} from "../../services/fileService";
 
 export const CommentBlock = ({
-    comment,
-    userName,
-    level,
-    onReplyClick,
-    onQuoteClick,
-    children
-}) => {
+                                 comment,
+                                 level,
+                                 onReplyClick,
+                                 onQuoteClick,
+                                 children
+                             }) => {
     const AVATAR_URL = "https://i.pravatar.cc/40";
 
     const [htmlContent, setHtmlContent] = useState("");
@@ -47,11 +46,11 @@ export const CommentBlock = ({
     return (
         <div
             className="comment-card"
-            style={{ marginLeft: `${level * 20}px` }}
+            style={{marginLeft: `${level * 20}px`}}
         >
             <div className="comment-header">
-                <img className="avatar" src={AVATAR_URL} alt="User avatar" />
-                <span className="username">{userName}</span>
+                <img className="avatar" src={AVATAR_URL} alt="User avatar"/>
+                <span className="username">{comment.userName}</span>
                 <span className="comment-date">{getDateString(comment.createdAt)}</span>
             </div>
 
@@ -88,7 +87,7 @@ export const CommentBlock = ({
             )}
 
             <div className="comment-body">
-                <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
+                <div dangerouslySetInnerHTML={{__html: htmlContent}}/>
             </div>
 
             <div className="comment-button">
