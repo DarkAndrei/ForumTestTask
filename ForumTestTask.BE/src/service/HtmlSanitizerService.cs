@@ -26,7 +26,7 @@ public class HtmlSanitizerService
     public string Sanitize(string html) =>
         string.IsNullOrWhiteSpace(html) ? string.Empty : _sanitizer.Sanitize(html);
 
-    public List<CommentContentItem> SanitizeContentItems(List<CommentContentItem> items)
+    public List<ContentItem> SanitizeContentItems(List<ContentItem> items)
     {
         foreach (var item in items)
         {
