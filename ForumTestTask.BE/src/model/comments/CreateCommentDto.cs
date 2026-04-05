@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-public class CommentDto
+public class CreateCommentDto
 {
     [Required]
     public int UserId { get; set; }
@@ -8,5 +8,5 @@ public class CommentDto
     [Required]
     [MinLength(1)]
     [MaxLength(1000)]
-    public string ContentItems { get; set; } = string.Empty;
+    public required string ContentItems { get; set; }
 }

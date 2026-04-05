@@ -1,10 +1,11 @@
 using System.Text.Json.Serialization;
 
-public class CommentContentItem
+public class ContentItem
 {
     [JsonPropertyName("type")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
-    public ContentType Type { get; set; }
+    [ValidEnum(typeof(ContentType))]
+    public required ContentType Type { get; set; }
 
     [JsonPropertyName("value")]
     public string? Value { get; set; }
