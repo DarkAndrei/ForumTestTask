@@ -16,6 +16,7 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(
             new JsonStringEnumConverter()
         );
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     });
 
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -45,13 +46,14 @@ builder.Services.AddCors(options =>
 
 builder.Services.Configure<FormOptions>(options =>
 {
-    options.MultipartBodyLengthLimit = 100_000_000;
+    options.MultipartBodyLengthLimit = 50_000_000;
 });
 
 builder.Services.AddScoped<FileValidator>();
 builder.Services.AddScoped<FileService>();
 builder.Services.AddSingleton<HtmlSanitizerService>();
-builder.Services.AddScoped<CommentService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ICommentService, CommentService>();
 
 var app = builder.Build();
 
@@ -78,7 +80,6 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.UseCors("CorsPolicy");
-app.UseStaticFiles();
 app.UseAuthorization();
 app.MapControllers().RequireCors("CorsPolicy");
 
