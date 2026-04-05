@@ -36,7 +36,7 @@ public class FileValidator
         }
     }
 
-    public async Task<bool> IsValidTextAsync(IFormFile file)
+    public async Task<bool> IsValidTxtAsync(IFormFile file)
     {
         if (file.Length == 0 || file.Length > MaxTxtSize)
             return false;
@@ -51,11 +51,19 @@ public class FileValidator
             using var reader = new StreamReader(file.OpenReadStream());
             var content = await reader.ReadToEndAsync();
 
-            // 🔥 Basic sanitization rules
             if (content.Contains("<script", StringComparison.OrdinalIgnoreCase))
                 return false;
 
             if (content.Contains("<html", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            if (content.Contains("javascript:", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            if (content.Contains("data:", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            if (content.Contains("vbscript:", StringComparison.OrdinalIgnoreCase))
                 return false;
 
             return true;

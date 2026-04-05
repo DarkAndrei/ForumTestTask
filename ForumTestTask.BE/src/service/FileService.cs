@@ -5,15 +5,15 @@ public class FileService
 {
     private const int TargetWidth = 320;
     private const int TargetHeight = 240;
-
-    private readonly string _uploadFolder = "wwwroot/uploads/comments/";
+    private readonly string _uploadFolder;
     private readonly string _fileFolder = "/uploads/comments/";
 
     private readonly FileValidator _validationService;
 
-    public FileService(FileValidator FileValidator)
+    public FileService(FileValidator FileValidator, IWebHostEnvironment env)
     {
         _validationService = FileValidator;
+        _uploadFolder = Path.Combine(env.ContentRootPath, "wwwroot", "uploads", "comments");
     }
 
     public async Task<string?> SaveAsync(IFormFile file)
@@ -24,7 +24,7 @@ public class FileService
         if (await _validationService.IsValidImageAsync(file))
             return await SaveImage(file);
 
-        if (await _validationService.IsValidTextAsync(file))
+        if (await _validationService.IsValidTxtAsync(file))
             return await SaveTextFile(file);
 
         return null;
@@ -34,6 +34,8 @@ public class FileService
     {
         var fileName = GenerateUniqueFileName(file.FileName);
         var path = Path.Combine(_uploadFolder, fileName);
+
+        Directory.CreateDirectory(_uploadFolder);
 
         using var image = await Image.LoadAsync(file.OpenReadStream());
 
@@ -52,6 +54,8 @@ public class FileService
     {
         var fileName = GenerateUniqueFileName(file.FileName);
         var path = Path.Combine(_uploadFolder, fileName);
+
+        Directory.CreateDirectory(_uploadFolder);
 
         using var stream = new FileStream(path, FileMode.Create);
         await file.CopyToAsync(stream);
