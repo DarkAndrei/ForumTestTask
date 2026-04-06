@@ -1,8 +1,8 @@
-import {useCallback, useEffect, useRef, useState} from "react"
-import {convertToHtml, parseEditorContent, renderContent, sanitizeContentItems} from "../../../services/commentService";
-import {EXTRA_HTML_ATTR} from "../../../Constants";
+import { useCallback, useEffect, useRef, useState } from "react"
+import { convertToHtml, parseEditorContent, renderContent, sanitizeContentItems } from "../../../services/commentService";
+import { EXTRA_HTML_ATTR } from "../../../Constants";
 
-export const useCommentFormEditor = ({quote, setQuote, file}) => {
+export const useCommentFormEditor = ({ quote, setQuote, file }) => {
     const editableRef = useRef(null);
     const [preview, setPreview] = useState("");
     const debounceRef = useRef(null);
@@ -23,17 +23,23 @@ export const useCommentFormEditor = ({quote, setQuote, file}) => {
         const range = selection.getRangeAt(0);
         const selectedText = range.toString();
 
-        const span = document.createElement("span");
-        span.textContent = `[${tag}]${selectedText}[/${tag}]`;
+        const textNode = document.createTextNode(
+            `[${tag}]${selectedText}[/${tag}]`
+        );
 
         range.deleteContents();
-        range.insertNode(span);
+        range.insertNode(textNode);
+
+        range.setStartAfter(textNode);
+        range.setEndAfter(textNode);
+        selection.removeAllRanges();
+        selection.addRange(range);
 
         updatePreview();
-    }
+    };
 
     const insertQuote = useCallback(async (quote) => {
-        const {id, contentItems} = quote;
+        const { id, contentItems } = quote;
         if (!id) return;
 
         const editable = editableRef.current;

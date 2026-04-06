@@ -1,5 +1,5 @@
-import {useCallback, useEffect, useState} from "react";
-import {getCommentsPage} from "../features/comments/commentApi";
+import { useCallback, useEffect, useState } from "react";
+import { getCommentsPage } from "../features/comments/commentApi";
 
 export const useCommentsData = () => {
     const [pagination, setPagination] = useState({
@@ -19,14 +19,14 @@ export const useCommentsData = () => {
         if (!commentResponse.success) {
             return console.log(commentResponse.message);
         }
-        
+
         setCommentsPage(commentResponse.data.comments);
         setPagination(commentResponse.data.pagination);
     }, [sortType, pagination]);
 
     useEffect(() => {
         updateComments();
-    }, [sortType, updateComments]);
+    }, [sortType]);
 
     return {
         commentsPage, setCommentsPage,
