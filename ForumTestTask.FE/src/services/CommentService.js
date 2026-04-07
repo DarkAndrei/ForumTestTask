@@ -47,14 +47,6 @@ export const sanitizeContentItems = (items) => {
     });
 };
 
-export const replaceBrToN = (input) => {
-    return input.replace(/<div><br><\/div>/gi, '\n')
-        .replace(/<div>/gi, '\n')
-        .replace(/<\/div>/gi, '')
-        .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/^\s*\n+/, "");
-}
-
 export const parseEditorContent = (html) => {
     const container = document.createElement("div");
     container.innerHTML = html;
@@ -169,4 +161,3 @@ const getFirstTextValue = (items) => {
 
     return firstValid?.value?.replace(/\n/g, " ") || "[Quote]";
 };
-
