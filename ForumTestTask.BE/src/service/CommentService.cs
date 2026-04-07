@@ -32,18 +32,6 @@ public class CommentService : ICommentService
         var contentItems = JsonSerializer.Deserialize<List<ContentItem>>(createCommentDto.ContentItems);
         if (contentItems == null || !contentItems.Any()) return null;
 
-        foreach (var item in contentItems)
-        {
-            bool hasValue = !string.IsNullOrWhiteSpace(item.Value);
-            bool hasId = item.Id.HasValue && item.Id.Value != 0;
-
-            if (hasValue == hasId)
-            {
-                Console.WriteLine($"Invalid content item: {JsonSerializer.Serialize(item)}");
-                return null;
-            }
-        }
-
         var sanitizedItems = _htmlSanitizerService.SanitizeContentItems(contentItems);
         var serializedContent = JsonSerializer.Serialize(sanitizedItems, new JsonSerializerOptions
         {
