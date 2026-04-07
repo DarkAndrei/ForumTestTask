@@ -9,8 +9,18 @@ RUN npm run build
 # production stage
 FROM nginx:alpine
 COPY --from=build /app/build /usr/share/nginx/html
+
+RUN mkdir -p /etc/nginx/certs && \
+    apk add --no-cache openssl && \
+    openssl req -x509 -nodes -days 365 \
+        -newkey rsa:2048 \
+        -keyout /etc/nginx/certs/server.key \
+        -out /etc/nginx/certs/server.crt \
+        -subj "/CN=localhost"
+
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY certs /etc/nginx/certs
+
 EXPOSE 80
 EXPOSE 443
+
 CMD ["nginx", "-g", "daemon off;"]

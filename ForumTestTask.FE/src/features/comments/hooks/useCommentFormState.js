@@ -1,16 +1,16 @@
-import {useRef, useState} from "react";
-import {parseEditorContent, sanitizeContentItems} from "../../../services/commentService";
-import {addUser} from "../../users/userApi";
-import {addComment, addReplyComment} from "../commentApi";
-import {parseApiErrors} from "../../parseApiErrors";
-import {CommentDto} from "../models/CommentDto";
-import {resizeImage, validateFile} from "../../../services/fileService";
+import { useRef, useState } from "react";
+import { parseEditorContent, sanitizeContentItems } from "../../../services/commentService";
+import { addUser } from "../../users/userApi";
+import { addComment, addReplyComment } from "../commentApi";
+import { parseApiErrors } from "../../parseApiErrors";
+import { CommentDto } from "../models/CommentDto";
+import { resizeImage, validateFile } from "../../../services/fileService";
 
 export const useCommentFormState = ({
-                                        parentCommentId,
-                                        setParentCommentId,
-                                        updateComments,
-                                    }) => {
+    parentCommentId,
+    setParentCommentId,
+    updateComments,
+}) => {
     const [userName, setUserName] = useState("");
     const [email, setEmail] = useState("");
     const [homePage, setHomePage] = useState("");
@@ -21,7 +21,7 @@ export const useCommentFormState = ({
 
     const validateAndSubmit = async (html, file) => {
         setMessages([]);
-        const validationErrors = validateForm({userName, email, homePage, html});
+        const validationErrors = validateForm({ userName, email, homePage, html });
 
         if (validationErrors.length > 0) {
             return setMessages(validationErrors);
@@ -29,7 +29,7 @@ export const useCommentFormState = ({
 
         try {
             const name = userName;
-            const userResult = await addUser({name, email, homePage});
+            const userResult = await addUser({ name, email, homePage });
             const userId = userResult.data.data.id;
 
             const contentItems = parseEditorContent(html);
@@ -63,7 +63,7 @@ export const useCommentFormState = ({
         }
     }
 
-    const validateForm = ({userName, email, homePage, html}) => {
+    const validateForm = ({ userName, email, homePage, html }) => {
         const errors = [];
 
         if (!userName.trim()) errors.push("Enter your name");
