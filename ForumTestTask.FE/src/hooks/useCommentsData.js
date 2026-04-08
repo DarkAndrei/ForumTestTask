@@ -16,7 +16,7 @@ export const useCommentsData = () => {
 
         const commentResponse = await getCommentsPage(pageToLoad, sortType);
 
-        if (!commentResponse.success) {
+        if (!commentResponse) {
             return console.log(commentResponse.message);
         }
 

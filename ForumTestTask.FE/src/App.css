@@ -22,6 +22,7 @@
     outline: none;
     white-space: pre-wrap;
     text-align: left;
+    overflow-wrap: break-word
 }
 
 .comment-editor:focus {
@@ -38,6 +39,7 @@
     font-family: inherit;
     text-align: left;
     color: black;
+    overflow-wrap: break-word
 }
 
 .comment-form {
@@ -500,22 +502,18 @@ code {
     cursor: not-allowed;
 }
 
-
-/* Form group */
 .form-group {
     display: flex;
     flex-direction: column;
     gap: 6px;
 }
 
-/* Labels */
 .form-group label {
     font-size: 13px;
     font-weight: 600;
     color: #333;
 }
 
-/* Inputs */
 .comment-form input[type="text"],
 .comment-form input[type="file"] {
     padding: 10px 12px;
@@ -528,26 +526,6 @@ code {
 .comment-form input:focus {
     border-color: #4a90e2;
     outline: none;
-    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.15);
-}
-
-/* Editor */
-.comment-editor {
-    min-height: 140px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    padding: 10px;
-    background: #fff;
-    font-size: 14px;
-    color: black;
-    outline: none;
-    white-space: pre-wrap;
-    text-align: left;
-    transition: 0.2s;
-}
-
-.comment-editor:focus {
-    border-color: #4a90e2;
     box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.15);
 }
 

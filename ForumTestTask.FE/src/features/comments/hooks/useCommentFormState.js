@@ -52,7 +52,7 @@ export const useCommentFormState = ({
                 resetMessagesAfterDelay();
                 return true;
             } else {
-                setMessages((prev) => [...prev, commentResult.error]);
+                setMessages((prev) => [...prev, commentResult.errors.join(", ")]);
                 return false;
             }
 
@@ -142,7 +142,7 @@ export const useCommentFormState = ({
         fileInputRef.current.value = "";
     }
 
-    const resetMessagesAfterDelay = (delay = 5000) => {
+    const resetMessagesAfterDelay = (delay = 7000) => {
         setTimeout(() => {
             setMessages([]);
         }, delay);

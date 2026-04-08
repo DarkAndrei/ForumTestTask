@@ -7,7 +7,7 @@ public class UserDto
     [Required]
     [StringLength(50, MinimumLength = 3)]
     [RegularExpression(@"^[a-zA-Z0-9]+$",
-        ErrorMessage = "Username can contain only letters and numbers")]
+        ErrorMessage = "Name can contain only letters and numbers")]
     public required string Name { get; set; }
 
     [Required]
