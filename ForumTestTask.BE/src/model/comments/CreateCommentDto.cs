@@ -7,6 +7,7 @@ public class CreateCommentDto
 
     [Required]
     [MinLength(1)]
-    [MaxLength(1000)]
+    [MaxLength(1000,
+        ErrorMessage = "Content is too long")]
     public required string ContentItems { get; set; }
 }

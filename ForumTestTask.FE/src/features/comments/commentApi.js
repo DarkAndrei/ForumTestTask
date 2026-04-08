@@ -2,24 +2,50 @@ import { COMMENTS_ENDPOINT, REPLY_ENDPOINT } from "../../apiConfig.js";
 
 const handleResponse = async (response) => {
     if (!response.ok) {
-        let errorMessage = "An unexpected error occurred";
-
         try {
             const errorText = await response.text();
-            try {
-                const errorJson = JSON.parse(errorText);
-                errorMessage = errorJson.message || errorJson.error || errorText;
-            } catch {
-                errorMessage = errorText || errorMessage;
-            }
-        } catch (e) {
-        }
 
-        return {
-            success: false,
-            error: errorMessage,
-            data: null
-        };
+            let parsed;
+
+            try {
+                parsed = JSON.parse(errorText);
+            } catch {
+                return {
+                    success: false,
+                    errors: [errorText || "Unknown error"],
+                    data: null
+                };
+            }
+
+            if (parsed.errors) {
+                return {
+                    success: false,
+                    errors: Object.values(parsed.errors).flat(),
+                    data: null
+                }
+            }
+
+            if (parsed.message || parsed.error) {
+                return {
+                    success: false,
+                    errors: [parsed.message || parsed.error],
+                    data: null
+                }
+            }
+
+            return {
+                success: false,
+                errors: ["Unknown error"],
+                data: null
+            }
+
+        } catch {
+            return {
+                success: false,
+                errors: ["Failed to read error response"],
+                data: null
+            }
+        }
     }
 
     try {
@@ -27,16 +53,16 @@ const handleResponse = async (response) => {
         return {
             success: true,
             data,
-            error: null
+            errors: null
         };
-    } catch (e) {
+    } catch {
         return {
             success: false,
-            error: "Failed to parse server response",
+            errors: ["Failed to parse server response"],
             data: null
         };
     }
-};
+}
 
 export async function addComment(newComment, file) {
     try {
@@ -141,3 +167,4 @@ export async function getCommentsPage(page, sortType) {
         };
     }
 }
+
